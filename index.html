@@ -8,7 +8,7 @@ const MOMENTS_EXEMPLES = [
   "J'ai fait semblant de pas voir quelqu'un pendant 10 minutes",
   "J'ai dit 'toi aussi' quand le serveur m'a dit bon appétit",
 ];
- 
+
 const REACTIONS_IA = [
   { emoji: "💀", label: "FATAL" },
   { emoji: "😭", label: "TRAGIQUE" },
@@ -34,10 +34,8 @@ const MUSIQUES = [
 ];
 
 export default function ReplayDeHonte() {
-  const [phase, setPhase] = useState("accueil"); 
-  // accueil | saisie | analyse | cinematique | verdict
+  const [phase, setPhase] = useState("accueil");
   const [moment, setMoment] = useState("");
-  const [nomPersonnage, setNomPersonnage] = useState("");
   const [score, setScore] = useState(0);
   const [musiqueChoisie, setMusiqueChoisie] = useState(null);
   const [reactionChoisie, setReactionChoisie] = useState(null);
@@ -51,48 +49,41 @@ export default function ReplayDeHonte() {
   const [slowMotionText, setSlowMotionText] = useState("");
   const intervalRef = useRef(null);
 
-  // Effet de vignette pulsante
   useEffect(() => {
     if (phase === "cinematique") {
       intervalRef.current = setInterval(() => {
-        setVignetteIntensity(prev => prev === 0 ? 0.7 : 0);
+        setVignetteIntensity((prev) => (prev === 0 ? 0.7 : 0));
       }, 800);
     }
     return () => clearInterval(intervalRef.current);
   }, [phase]);
 
-  // Typewriter effect
-  const typeWriter = (text, callback) => {
+  const typeWriter = (text) => {
     setIsTyping(true);
     setTexteIA("");
     let i = 0;
     const interval = setInterval(() => {
       if (i < text.length) {
-        setTexteIA(prev => prev + text[i]);
+        setTexteIA((prev) => prev + text[i]);
         i++;
       } else {
         clearInterval(interval);
         setIsTyping(false);
-        if (callback) callback();
       }
     }, 30);
   };
 
   const analyserMoment = () => {
     if (!moment.trim()) return;
-    
-    // Calcul du score de honte
-    const motsHonteux = ["prof", "maman", "glissé", "liké", "vocal", "mauvais", "semblant", "serveur"];
+    const motsHonteux = ["prof","maman","glissé","liké","vocal","mauvais","semblant","serveur"];
     let scoreCalc = Math.floor(Math.random() * 30) + 60;
-    motsHonteux.forEach(mot => {
+    motsHonteux.forEach((mot) => {
       if (moment.toLowerCase().includes(mot)) scoreCalc = Math.min(99, scoreCalc + 5);
     });
-    
     setScore(scoreCalc);
     setMusiqueChoisie(MUSIQUES[Math.floor(Math.random() * MUSIQUES.length)]);
     setReactionChoisie(REACTIONS_IA[Math.floor(Math.random() * REACTIONS_IA.length)]);
     setPhase("analyse");
-    
     setTimeout(() => {
       setPhase("cinematique");
       setCinematiqueStep(0);
@@ -102,26 +93,15 @@ export default function ReplayDeHonte() {
 
   const lancerCinematique = () => {
     const steps = [
+      () => { setCinematiqueStep(1); setSlowMotionText("RALENTI x0.25"); },
+      () => { setCinematiqueStep(2); setRalentiIndex(Math.floor(Math.random() * RALENTIS.length)); },
+      () => { setCinematiqueStep(3); },
+      () => { setCinematiqueStep(4); },
       () => {
-        setCinematiqueStep(1);
-        setSlowMotionText("RALENTI x0.25");
-      },
-      () => {
-        setCinematiqueStep(2);
-        setRalentiIndex(Math.floor(Math.random() * RALENTIS.length));
-      },
-      () => {
-        setCinematiqueStep(3);
-      },
-      () => {
-        setCinematiqueStep(4);
-      },
-      () => {
-        // Générer le verdict IA
         const verdicts = [
-          `Après analyse approfondie de ton moment de honte, l'IA confirme : tu aurais pu disparaître dans le sol. Score officiel : ${Math.floor(Math.random() * 30) + 70}/100 sur l'échelle internationale de la honte.`,
-          `Ceci est cliniquement classifié comme un "Moment de Mortification Extrême". Des études montrent que ton cerveau rejouera ceci à 3h du matin pendant minimum 7 ans.`,
-          `L'IA a scanné 4 millions de moments gênants dans sa base de données. Le tien se classe dans le top 5% des situations les plus irréversibles.`,
+          "Après analyse approfondie de ton moment de honte, l'IA confirme : tu aurais pu disparaître dans le sol. Cliniquement classifié comme irréversible.",
+          "Ceci est cliniquement classifié comme un Moment de Mortification Extrême. Ton cerveau rejouera ceci à 3h du matin pendant minimum 7 ans.",
+          "L'IA a scanné 4 millions de moments gênants. Le tien se classe dans le top 5% des situations les plus catastrophiques jamais enregistrées.",
         ];
         const replayData = {
           id: Date.now(),
@@ -133,12 +113,11 @@ export default function ReplayDeHonte() {
           date: new Date().toLocaleDateString("fr-FR"),
         };
         setCurrentReplay(replayData);
-        setReplays(prev => [replayData, ...prev.slice(0, 4)]);
+        setReplays((prev) => [replayData, ...prev.slice(0, 4)]);
         setPhase("verdict");
         typeWriter(replayData.verdict);
       },
     ];
-
     steps.forEach((step, index) => {
       setTimeout(step, index * 2000);
     });
@@ -154,192 +133,191 @@ export default function ReplayDeHonte() {
   };
 
   const utiliserExemple = () => {
-    const exemple = MOMENTS_EXEMPLES[Math.floor(Math.random() * MOMENTS_EXEMPLES.length)];
-    setMoment(exemple);
+    setMoment(MOMENTS_EXEMPLES[Math.floor(Math.random() * MOMENTS_EXEMPLES.length)]);
   };
 
-  // =================== RENDERS ===================
-
+  // ── ACCUEIL ──────────────────────────────────────────────
   if (phase === "accueil") {
     return (
-      <div style={{
-        minHeight: "100vh",
-        background: "linear-gradient(135deg, #0a0a0a 0%, #1a0000 50%, #0a0a0a 100%)",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        fontFamily: "'Georgia', serif",
-        color: "white",
-        padding: "20px",
-        position: "relative",
-        overflow: "hidden",
-      }}>
-        {/* Particules de honte */}
-        {[...Array(6)].map((_, i) => (
-          <div key={i} style={{
-            position: "absolute",
-            fontSize: "2rem",
-            opacity: 0.1,
-            top: `${Math.random() * 100}%`,
-            left: `${Math.random() * 100}%`,
-            animation: `float${i} 10s infinite`,
-          }}>💀</div>
-        ))}
-
-        <div style={{
+      <div
+        style={{
+          minHeight: "100vh",
+          background: "linear-gradient(135deg,#0a0a0a 0%,#1a0000 50%,#0a0a0a 100%)",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          fontFamily: "Georgia,serif",
+          color: "white",
+          padding: "20px",
           textAlign: "center",
-          maxWidth: "500px",
-          zIndex: 1,
-        }}>
-          <div style={{ fontSize: "5rem", marginBottom: "10px" }}>🎬</div>
-          
-          <div style={{
+        }}
+      >
+        <div style={{ fontSize: "5rem", marginBottom: "10px" }}>🎬</div>
+
+        <div
+          style={{
             fontSize: "0.8rem",
             letterSpacing: "0.4rem",
             color: "#ff4444",
             textTransform: "uppercase",
             marginBottom: "10px",
-          }}>
-            UNE PRODUCTION IA
-          </div>
-          
-          <h1 style={{
+          }}
+        >
+          UNE PRODUCTION IA
+        </div>
+
+        <h1
+          style={{
             fontSize: "3.5rem",
-            fontWeight: "900",
-            margin: "0",
-            background: "linear-gradient(180deg, #ffffff 0%, #ff4444 100%)",
+            fontWeight: 900,
+            margin: 0,
+            background: "linear-gradient(180deg,#ffffff 0%,#ff4444 100%)",
             WebkitBackgroundClip: "text",
             WebkitTextFillColor: "transparent",
-            lineHeight: "1",
-          }}>
-            REPLAY
-          </h1>
-          <h1 style={{
+            lineHeight: 1,
+          }}
+        >
+          REPLAY
+        </h1>
+        <h1
+          style={{
             fontSize: "2.5rem",
-            fontWeight: "900",
-            margin: "0 0 10px 0",
+            fontWeight: 900,
+            margin: "0 0 10px",
             color: "#ff4444",
             letterSpacing: "0.3rem",
-          }}>
-            DE HONTE
-          </h1>
-          
-          <div style={{
+          }}
+        >
+          DE HONTE
+        </h1>
+
+        <div
+          style={{
             width: "100px",
             height: "2px",
             background: "#ff4444",
             margin: "0 auto 20px",
-          }}/>
-          
-          <p style={{
+          }}
+        />
+
+        <p
+          style={{
             fontSize: "1rem",
             color: "#aaa",
-            lineHeight: "1.6",
+            lineHeight: 1.6,
             marginBottom: "30px",
-          }}>
-            Revivez vos moments les plus embarrassants<br/>
-            en version <strong style={{color: "#ff6666"}}>CINÉMATIQUE DRAMATIQUE</strong><br/>
-            avec ralenti, musique et analyse IA
-          </p>
+            maxWidth: "380px",
+          }}
+        >
+          Revivez vos moments les plus embarrassants en version{" "}
+          <strong style={{ color: "#ff6666" }}>CINÉMATIQUE DRAMATIQUE</strong>
+          <br />
+          avec ralenti, musique et analyse IA
+        </p>
 
-          <div style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: "10px",
-            alignItems: "center",
-          }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "10px", alignItems: "center" }}>
+          <button
+            onClick={() => setPhase("saisie")}
+            style={{
+              padding: "18px 50px",
+              fontSize: "1.1rem",
+              background: "linear-gradient(135deg,#cc0000,#ff4444)",
+              color: "white",
+              border: "none",
+              borderRadius: "4px",
+              cursor: "pointer",
+              letterSpacing: "0.2rem",
+              textTransform: "uppercase",
+              fontWeight: "bold",
+              boxShadow: "0 0 30px rgba(255,68,68,0.4)",
+            }}
+          >
+            🎭 COMMENCER LE SUPPLICE
+          </button>
+
+          {replays.length > 0 && (
             <button
-              onClick={() => setPhase("saisie")}
+              onClick={() => setPhase("historique")}
               style={{
-                padding: "18px 50px",
-                fontSize: "1.1rem",
-                background: "linear-gradient(135deg, #cc0000, #ff4444)",
-                color: "white",
-                border: "none",
+                padding: "12px 30px",
+                fontSize: "0.9rem",
+                background: "transparent",
+                color: "#666",
+                border: "1px solid #333",
                 borderRadius: "4px",
                 cursor: "pointer",
-                letterSpacing: "0.2rem",
-                textTransform: "uppercase",
-                fontWeight: "bold",
-                boxShadow: "0 0 30px rgba(255,68,68,0.4)",
               }}
             >
-              🎭 COMMENCER LE SUPPLICE
+              📼 Mes replays ({replays.length})
             </button>
-            
-            {replays.length > 0 && (
-              <button
-                onClick={() => setPhase("historique")}
-                style={{
-                  padding: "12px 30px",
-                  fontSize: "0.9rem",
-                  background: "transparent",
-                  color: "#666",
-                  border: "1px solid #333",
-                  borderRadius: "4px",
-                  cursor: "pointer",
-                }}
-              >
-                📼 Mes replays ({replays.length})
-              </button>
-            )}
-          </div>
-
-          <p style={{ color: "#333", fontSize: "0.8rem", marginTop: "30px" }}>
-            ⚠️ Déconseillé aux âmes sensibles
-          </p>
+          )}
         </div>
+
+        <p style={{ color: "#333", fontSize: "0.8rem", marginTop: "30px" }}>
+          ⚠️ Déconseillé aux âmes sensibles
+        </p>
       </div>
     );
   }
 
+  // ── SAISIE ───────────────────────────────────────────────
   if (phase === "saisie") {
     return (
-      <div style={{
-        minHeight: "100vh",
-        background: "#0a0a0a",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        fontFamily: "'Georgia', serif",
-        color: "white",
-        padding: "20px",
-      }}>
+      <div
+        style={{
+          minHeight: "100vh",
+          background: "#0a0a0a",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          fontFamily: "Georgia,serif",
+          color: "white",
+          padding: "20px",
+        }}
+      >
         <div style={{ maxWidth: "500px", width: "100%" }}>
-          
-          <button onClick={() => setPhase("accueil")} style={{
-            background: "none", border: "none", color: "#555",
-            cursor: "pointer", fontSize: "0.9rem", marginBottom: "30px",
-            padding: 0,
-          }}>
+          <button
+            onClick={() => setPhase("accueil")}
+            style={{
+              background: "none",
+              border: "none",
+              color: "#555",
+              cursor: "pointer",
+              fontSize: "0.9rem",
+              marginBottom: "30px",
+              padding: 0,
+            }}
+          >
             ← Retour
           </button>
 
-          <div style={{
-            fontSize: "0.8rem",
-            letterSpacing: "0.3rem",
-            color: "#ff4444",
-            textTransform: "uppercase",
-            marginBottom: "10px",
-          }}>
+          <div
+            style={{
+              fontSize: "0.8rem",
+              letterSpacing: "0.3rem",
+              color: "#ff4444",
+              textTransform: "uppercase",
+              marginBottom: "10px",
+            }}
+          >
             ÉTAPE 1/3 — LE CRIME
           </div>
 
-          <h2 style={{ fontSize: "1.8rem", marginBottom: "8px", lineHeight: "1.2" }}>
-            Décris ton moment<br/>
-            <span style={{ color: "#ff4444" }}>de honte</span>
+          <h2 style={{ fontSize: "1.8rem", marginBottom: "8px", lineHeight: 1.2 }}>
+            Décris ton moment <span style={{ color: "#ff4444" }}>de honte</span>
           </h2>
-          
+
           <p style={{ color: "#555", fontSize: "0.85rem", marginBottom: "25px" }}>
-            Sois honnête. L'IA ne juge pas... enfin si, mais avec style.
+            Sois honnête. L'IA ne juge pas… enfin si, mais avec style.
           </p>
 
           <textarea
             value={moment}
             onChange={(e) => setMoment(e.target.value)}
-            placeholder="Ex: J'ai dit 'je t'aime' à la caisse du supermarché..."
+            placeholder="Ex: J'ai dit je t'aime à la caisse du supermarché..."
+            maxLength={200}
             style={{
               width: "100%",
               height: "120px",
@@ -353,19 +331,18 @@ export default function ReplayDeHonte() {
               resize: "none",
               outline: "none",
               boxSizing: "border-box",
-              transition: "border-color 0.3s",
             }}
-            onFocus={(e) => e.target.style.borderColor = "#ff4444"}
-            onBlur={(e) => e.target.style.borderColor = "#333"}
           />
 
-          <div style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginTop: "8px",
-            marginBottom: "20px",
-          }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginTop: "8px",
+              marginBottom: "20px",
+            }}
+          >
             <span style={{ color: "#333", fontSize: "0.8rem" }}>
               {moment.length}/200 caractères
             </span>
@@ -385,9 +362,16 @@ export default function ReplayDeHonte() {
             </button>
           </div>
 
-          {/* Exemples rapides */}
           <div style={{ marginBottom: "25px" }}>
-            <p style={{ color: "#444", fontSize: "0.75rem", marginBottom: "10px", textTransform: "uppercase", letterSpacing: "0.2rem" }}>
+            <p
+              style={{
+                color: "#444",
+                fontSize: "0.75rem",
+                marginBottom: "10px",
+                textTransform: "uppercase",
+                letterSpacing: "0.2rem",
+              }}
+            >
               Classiques de la honte :
             </p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
@@ -404,10 +388,9 @@ export default function ReplayDeHonte() {
                     cursor: "pointer",
                     fontSize: "0.75rem",
                     textAlign: "left",
-                    maxWidth: "200px",
                   }}
                 >
-                  {ex.substring(0, 35)}...
+                  {ex.substring(0, 35)}…
                 </button>
               ))}
             </div>
@@ -420,8 +403,8 @@ export default function ReplayDeHonte() {
               width: "100%",
               padding: "18px",
               fontSize: "1.1rem",
-              background: moment.trim() 
-                ? "linear-gradient(135deg, #cc0000, #ff4444)" 
+              background: moment.trim()
+                ? "linear-gradient(135deg,#cc0000,#ff4444)"
                 : "#1a1a1a",
               color: moment.trim() ? "white" : "#333",
               border: "none",
@@ -430,7 +413,6 @@ export default function ReplayDeHonte() {
               letterSpacing: "0.15rem",
               textTransform: "uppercase",
               fontWeight: "bold",
-              transition: "all 0.3s",
             }}
           >
             🎬 LANCER LE REPLAY
@@ -440,206 +422,190 @@ export default function ReplayDeHonte() {
     );
   }
 
+  // ── ANALYSE ──────────────────────────────────────────────
   if (phase === "analyse") {
     return (
-      <div style={{
-        minHeight: "100vh",
-        background: "#000",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        fontFamily: "'Georgia', serif",
-        color: "white",
-      }}>
-        <div style={{ textAlign: "center" }}>
-          <div style={{
+      <div
+        style={{
+          minHeight: "100vh",
+          background: "#000",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          fontFamily: "Georgia,serif",
+          color: "white",
+        }}
+      >
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        <div
+          style={{
             width: "60px",
             height: "60px",
             border: "3px solid #ff4444",
             borderTop: "3px solid transparent",
             borderRadius: "50%",
             animation: "spin 1s linear infinite",
-            margin: "0 auto 30px",
-          }}/>
-          
-          <p style={{ color: "#ff4444", letterSpacing: "0.3rem", fontSize: "0.85rem" }}>
-            ANALYSE EN COURS...
-          </p>
-          <p style={{ color: "#333", fontSize: "0.8rem", marginTop: "10px" }}>
-            Calcul du niveau de mortification...
-          </p>
-          
-          <style>{`
-            @keyframes spin { to { transform: rotate(360deg); } }
-          `}</style>
-        </div>
+            marginBottom: "30px",
+          }}
+        />
+        <p style={{ color: "#ff4444", letterSpacing: "0.3rem", fontSize: "0.85rem" }}>
+          ANALYSE EN COURS…
+        </p>
+        <p style={{ color: "#333", fontSize: "0.8rem", marginTop: "10px" }}>
+          Calcul du niveau de mortification…
+        </p>
       </div>
     );
   }
 
+  // ── CINÉMATIQUE ───────────────────────────────────────────
   if (phase === "cinematique") {
     return (
-      <div style={{
-        minHeight: "100vh",
-        background: "#000",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        fontFamily: "'Georgia', serif",
-        color: "white",
-        position: "relative",
-        overflow: "hidden",
-      }}>
-        {/* Bandes cinématiques */}
-        <div style={{
-          position: "absolute", top: 0, left: 0, right: 0,
-          height: "80px", background: "#000", zIndex: 10,
-        }}/>
-        <div style={{
-          position: "absolute", bottom: 0, left: 0, right: 0,
-          height: "80px", background: "#000", zIndex: 10,
-        }}/>
+      <div
+        style={{
+          minHeight: "100vh",
+          background: "#000",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          fontFamily: "Georgia,serif",
+          color: "white",
+          position: "relative",
+          overflow: "hidden",
+        }}
+      >
+        <style>{`
+          @keyframes fadeIn    { from { opacity:0 } to { opacity:1 } }
+          @keyframes slowReveal {
+            from { opacity:0; transform:scale(1.1); filter:blur(5px); }
+            to   { opacity:1; transform:scale(1);   filter:blur(0);   }
+          }
+          @keyframes bigReveal {
+            from { transform:scale(0.5); opacity:0; }
+            to   { transform:scale(1);   opacity:1; }
+          }
+        `}</style>
 
-        {/* Vignette */}
-        <div style={{
-          position: "absolute", inset: 0,
-          boxShadow: `inset 0 0 150px rgba(0,0,0,${vignetteIntensity})`,
-          zIndex: 5, pointerEvents: "none",
-          transition: "box-shadow 0.8s",
-        }}/>
+        {/* Bandes cinéma */}
+        <div style={{ position:"absolute", top:0, left:0, right:0, height:"80px", background:"#000", zIndex:10 }} />
+        <div style={{ position:"absolute", bottom:0, left:0, right:0, height:"80px", background:"#000", zIndex:10 }} />
+
+        {/* Vignette pulsante */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            boxShadow: `inset 0 0 150px rgba(0,0,0,${vignetteIntensity})`,
+            zIndex: 5,
+            pointerEvents: "none",
+            transition: "box-shadow 0.8s",
+          }}
+        />
 
         <div style={{ textAlign: "center", zIndex: 6, padding: "20px" }}>
-          
-          {/* Step 1: Titre + ralenti */}
           {cinematiqueStep >= 1 && (
-            <div style={{
-              animation: "fadeIn 1s ease-in",
-              marginBottom: "20px",
-            }}>
-              <div style={{
-                fontSize: "0.7rem",
-                letterSpacing: "0.5rem",
-                color: "#ff4444",
-                marginBottom: "10px",
-              }}>
+            <div style={{ animation: "fadeIn 1s ease-in", marginBottom: "20px" }}>
+              <div style={{ fontSize: "0.7rem", letterSpacing: "0.5rem", color: "#ff4444" }}>
                 🎬 {slowMotionText}
               </div>
             </div>
           )}
 
-          {/* Le moment en gros */}
           {cinematiqueStep >= 1 && (
-            <div style={{
-              fontSize: "1.3rem",
-              color: "#fff",
-              maxWidth: "400px",
-              lineHeight: "1.8",
-              letterSpacing: "0.05rem",
-              animation: "slowReveal 2s ease-out",
-              filter: "brightness(1.2)",
-            }}>
+            <div
+              style={{
+                fontSize: "1.3rem",
+                color: "#fff",
+                maxWidth: "400px",
+                lineHeight: 1.8,
+                animation: "slowReveal 2s ease-out",
+              }}
+            >
               "{moment}"
             </div>
           )}
 
-          {/* Ralenti texte */}
           {cinematiqueStep >= 2 && (
-            <div style={{
-              fontSize: "1.6rem",
-              color: "#ff4444",
-              marginTop: "30px",
-              fontStyle: "italic",
-              animation: "fadeIn 1.5s ease-in",
-              letterSpacing: "0.2rem",
-            }}>
+            <div
+              style={{
+                fontSize: "1.6rem",
+                color: "#ff4444",
+                marginTop: "30px",
+                fontStyle: "italic",
+                animation: "fadeIn 1.5s ease-in",
+                letterSpacing: "0.2rem",
+              }}
+            >
               {RALENTIS[ralentiIndex]}
             </div>
           )}
 
-          {/* Musique */}
           {cinematiqueStep >= 3 && musiqueChoisie && (
-            <div style={{
-              marginTop: "30px",
-              animation: "fadeIn 1s ease-in",
-              color: "#666",
-              fontSize: "0.85rem",
-            }}>
-              <div style={{ fontSize: "2rem", marginBottom: "5px" }}>
-                {musiqueChoisie.emoji}
-              </div>
+            <div style={{ marginTop: "30px", animation: "fadeIn 1s ease-in", color: "#666" }}>
+              <div style={{ fontSize: "2rem", marginBottom: "5px" }}>{musiqueChoisie.emoji}</div>
               <span>♪ {musiqueChoisie.nom}</span>
-              <span style={{ marginLeft: "10px", color: "#333" }}>
-                {musiqueChoisie.bpm}
-              </span>
+              <span style={{ marginLeft: "10px", color: "#333" }}>{musiqueChoisie.bpm}</span>
             </div>
           )}
 
-          {/* Réaction */}
           {cinematiqueStep >= 4 && reactionChoisie && (
-            <div style={{
-              marginTop: "30px",
-              animation: "bigReveal 0.5s ease-out",
-            }}>
+            <div style={{ marginTop: "30px", animation: "bigReveal 0.5s ease-out" }}>
               <div style={{ fontSize: "5rem" }}>{reactionChoisie.emoji}</div>
-              <div style={{
-                fontSize: "2rem",
-                fontWeight: "900",
-                letterSpacing: "0.5rem",
-                color: "#ff4444",
-              }}>
+              <div
+                style={{
+                  fontSize: "2rem",
+                  fontWeight: 900,
+                  letterSpacing: "0.5rem",
+                  color: "#ff4444",
+                }}
+              >
                 {reactionChoisie.label}
               </div>
             </div>
           )}
         </div>
-
-        <style>{`
-          @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-          @keyframes slowReveal { 
-            from { opacity: 0; transform: scale(1.1); filter: blur(5px); } 
-            to { opacity: 1; transform: scale(1); filter: blur(0); } 
-          }
-          @keyframes bigReveal { 
-            from { transform: scale(0.5); opacity: 0; } 
-            to { transform: scale(1); opacity: 1; } 
-          }
-        `}</style>
       </div>
     );
   }
 
+  // ── VERDICT ───────────────────────────────────────────────
   if (phase === "verdict" && currentReplay) {
     return (
-      <div style={{
-        minHeight: "100vh",
-        background: "linear-gradient(180deg, #000 0%, #0a0000 100%)",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        fontFamily: "'Georgia', serif",
-        color: "white",
-        padding: "20px",
-      }}>
+      <div
+        style={{
+          minHeight: "100vh",
+          background: "linear-gradient(180deg,#000 0%,#0a0000 100%)",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          fontFamily: "Georgia,serif",
+          color: "white",
+          padding: "20px",
+        }}
+      >
+        <style>{`@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }`}</style>
+
         <div style={{ maxWidth: "500px", width: "100%", textAlign: "center" }}>
-          
-          {/* Score de honte */}
-          <div style={{
-            width: "120px",
-            height: "120px",
-            borderRadius: "50%",
-            border: "3px solid #ff4444",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            margin: "0 auto 25px",
-            background: "radial-gradient(circle, #200000, #000)",
-            boxShadow: "0 0 40px rgba(255,68,68,0.3)",
-          }}>
-            <div style={{ fontSize: "2.5rem", fontWeight: "900", color: "#ff4444" }}>
+          {/* Cercle score */}
+          <div
+            style={{
+              width: "120px",
+              height: "120px",
+              borderRadius: "50%",
+              border: "3px solid #ff4444",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              margin: "0 auto 25px",
+              background: "radial-gradient(circle,#200000,#000)",
+              boxShadow: "0 0 40px rgba(255,68,68,0.3)",
+            }}
+          >
+            <div style={{ fontSize: "2.5rem", fontWeight: 900, color: "#ff4444" }}>
               {currentReplay.score}
             </div>
             <div style={{ fontSize: "0.6rem", color: "#666", letterSpacing: "0.15rem" }}>
@@ -647,69 +613,77 @@ export default function ReplayDeHonte() {
             </div>
           </div>
 
-          <div style={{
-            fontSize: "0.8rem",
-            letterSpacing: "0.3rem",
-            color: "#ff4444",
-            textTransform: "uppercase",
-            marginBottom: "15px",
-          }}>
+          <div
+            style={{
+              fontSize: "0.8rem",
+              letterSpacing: "0.3rem",
+              color: "#ff4444",
+              textTransform: "uppercase",
+              marginBottom: "15px",
+            }}
+          >
             VERDICT DE L'IA
           </div>
 
-          <div style={{
-            background: "#0d0d0d",
-            border: "1px solid #1a1a1a",
-            borderLeft: "3px solid #ff4444",
-            borderRadius: "8px",
-            padding: "20px",
-            marginBottom: "25px",
-            minHeight: "80px",
-            textAlign: "left",
-          }}>
-            <p style={{
-              color: "#ccc",
-              lineHeight: "1.7",
-              fontSize: "0.95rem",
-              margin: 0,
-            }}>
+          {/* Texte IA typewriter */}
+          <div
+            style={{
+              background: "#0d0d0d",
+              border: "1px solid #1a1a1a",
+              borderLeft: "3px solid #ff4444",
+              borderRadius: "8px",
+              padding: "20px",
+              marginBottom: "25px",
+              minHeight: "80px",
+              textAlign: "left",
+            }}
+          >
+            <p style={{ color: "#ccc", lineHeight: 1.7, fontSize: "0.95rem", margin: 0 }}>
               {texteIA}
               {isTyping && (
-                <span style={{
-                  display: "inline-block",
-                  width: "2px",
-                  height: "1em",
-                  background: "#ff4444",
-                  marginLeft: "2px",
-                  animation: "blink 0.7s infinite",
-                }}/>
+                <span
+                  style={{
+                    display: "inline-block",
+                    width: "2px",
+                    height: "1em",
+                    background: "#ff4444",
+                    marginLeft: "2px",
+                    animation: "blink 0.7s infinite",
+                  }}
+                />
               )}
             </p>
           </div>
 
-          {/* Infos cinéma */}
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: "10px",
-            marginBottom: "25px",
-          }}>
-            <div style={{
-              background: "#0d0d0d",
-              border: "1px solid #1a1a1a",
-              borderRadius: "8px",
-              padding: "12px",
-            }}>
+          {/* Cards musique + réaction */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: "10px",
+              marginBottom: "25px",
+            }}
+          >
+            <div
+              style={{
+                background: "#0d0d0d",
+                border: "1px solid #1a1a1a",
+                borderRadius: "8px",
+                padding: "12px",
+              }}
+            >
               <div style={{ fontSize: "1.5rem" }}>{currentReplay.musique.emoji}</div>
               <div style={{ fontSize: "0.7rem", color: "#555", marginTop: "4px" }}>BANDE SON</div>
               <div style={{ fontSize: "0.8rem", color: "#888" }}>{currentReplay.musique.nom}</div>
             </div>
-            <div style={{
-              background: "#0d0d0d",
-              border: "1px solid #1a1a1a",
-              borderRadius: "8px",
-              padding: "12px",
-            }}>
+            <div
+              style={{
+                background: "#0d0d0d",
+                border: "1px solid #1a1a1a",
+                borderRadius: "8px",
+                padding: "12px",
+              }}
+            >
               <div style={{ fontSize: "1.5rem" }}>{currentReplay.reaction.emoji}</div>
               <div style={{ fontSize: "0.7rem", color: "#555", marginTop: "4px" }}>CLASSIFICATION</div>
               <div style={{ fontSize: "0.8rem", color: "#888" }}>{currentReplay.reaction.label}</div>
@@ -718,37 +692,30 @@ export default function ReplayDeHonte() {
 
           {/* Jauge */}
           <div style={{ marginBottom: "25px" }}>
-            <div style={{
-              display: "flex",
-              justifyContent: "space-between",
-              marginBottom: "6px",
-            }}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
               <span style={{ fontSize: "0.75rem", color: "#444" }}>Niveau de honte</span>
               <span style={{ fontSize: "0.75rem", color: "#ff4444" }}>{currentReplay.score}%</span>
             </div>
-            <div style={{
-              height: "6px",
-              background: "#111",
-              borderRadius: "3px",
-              overflow: "hidden",
-            }}>
-              <div style={{
-                height: "100%",
-                width: `${currentReplay.score}%`,
-                background: "linear-gradient(90deg, #ff4444, #cc0000)",
-                borderRadius: "3px",
-                transition: "width 1s ease-out",
-              }}/>
+            <div style={{ height: "6px", background: "#111", borderRadius: "3px", overflow: "hidden" }}>
+              <div
+                style={{
+                  height: "100%",
+                  width: `${currentReplay.score}%`,
+                  background: "linear-gradient(90deg,#ff4444,#cc0000)",
+                  borderRadius: "3px",
+                  transition: "width 1s ease-out",
+                }}
+              />
             </div>
           </div>
 
-          {/* Actions */}
+          {/* Boutons */}
           <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
             <button
               onClick={reset}
               style={{
                 padding: "16px",
-                background: "linear-gradient(135deg, #cc0000, #ff4444)",
+                background: "linear-gradient(135deg,#cc0000,#ff4444)",
                 color: "white",
                 border: "none",
                 borderRadius: "4px",
@@ -762,12 +729,26 @@ export default function ReplayDeHonte() {
               🔄 NOUVEAU REPLAY
             </button>
             <button
+              onClick={() => setPhase("historique")}
+              style={{
+                padding: "12px",
+                background: "transparent",
+                color: "#555",
+                border: "1px solid #222",
+                borderRadius: "4px",
+                cursor: "pointer",
+                fontSize: "0.85rem",
+              }}
+            >
+              📼 Voir mes replays ({replays.length})
+            </button>
+            <button
               onClick={() => setPhase("accueil")}
               style={{
                 padding: "12px",
                 background: "transparent",
-                color: "#444",
-                border: "1px solid #222",
+                color: "#333",
+                border: "1px solid #111",
                 borderRadius: "4px",
                 cursor: "pointer",
                 fontSize: "0.85rem",
@@ -781,29 +762,35 @@ export default function ReplayDeHonte() {
             📼 Replay #{replays.length} sauvegardé dans ta collection de honte
           </p>
         </div>
-
-        <style>{`
-          @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
-        `}</style>
       </div>
     );
   }
 
-  // Historique
+  // ── HISTORIQUE ────────────────────────────────────────────
   if (phase === "historique") {
     return (
-      <div style={{
-        minHeight: "100vh",
-        background: "#0a0a0a",
-        fontFamily: "'Georgia', serif",
-        color: "white",
-        padding: "20px",
-      }}>
+      <div
+        style={{
+          minHeight: "100vh",
+          background: "#0a0a0a",
+          fontFamily: "Georgia,serif",
+          color: "white",
+          padding: "20px",
+        }}
+      >
         <div style={{ maxWidth: "500px", margin: "0 auto" }}>
-          <button onClick={() => setPhase("accueil")} style={{
-            background: "none", border: "none", color: "#555",
-            cursor: "pointer", fontSize: "0.9rem", marginBottom: "20px", padding: 0,
-          }}>
+          <button
+            onClick={() => setPhase("accueil")}
+            style={{
+              background: "none",
+              border: "none",
+              color: "#555",
+              cursor: "pointer",
+              fontSize: "0.9rem",
+              marginBottom: "20px",
+              padding: 0,
+            }}
+          >
             ← Retour
           </button>
 
@@ -814,27 +801,34 @@ export default function ReplayDeHonte() {
             Ta collection personnelle de traumatismes cinématiques
           </p>
 
+          {replays.length === 0 && (
+            <p style={{ color: "#222", textAlign: "center", marginTop: "60px" }}>
+              Aucun replay pour l'instant… tu es trop courageux 🫡
+            </p>
+          )}
+
           {replays.map((replay) => (
-            <div key={replay.id} style={{
-              background: "#0d0d0d",
-              border: "1px solid #1a1a1a",
-              borderLeft: "3px solid #ff4444",
-              borderRadius: "8px",
-              padding: "15px",
-              marginBottom: "12px",
-            }}>
+            <div
+              key={replay.id}
+              style={{
+                background: "#0d0d0d",
+                border: "1px solid #1a1a1a",
+                borderLeft: "3px solid #ff4444",
+                borderRadius: "8px",
+                padding: "15px",
+                marginBottom: "12px",
+              }}
+            >
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
                 <span style={{ fontSize: "1.5rem" }}>{replay.reaction.emoji}</span>
-                <div style={{ textAlign: "right" }}>
-                  <span style={{
-                    fontSize: "1.2rem",
-                    fontWeight: "900",
-                    color: "#ff4444",
-                  }}>{replay.score}</span>
+                <div>
+                  <span style={{ fontSize: "1.2rem", fontWeight: 900, color: "#ff4444" }}>
+                    {replay.score}
+                  </span>
                   <span style={{ color: "#333", fontSize: "0.7rem" }}>/100</span>
                 </div>
               </div>
-              <p style={{ color: "#888", fontSize: "0.85rem", margin: "0 0 6px 0", lineHeight: "1.4" }}>
+              <p style={{ color: "#888", fontSize: "0.85rem", margin: "0 0 6px", lineHeight: 1.4 }}>
                 "{replay.moment}"
               </p>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
