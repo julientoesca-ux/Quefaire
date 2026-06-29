@@ -1,860 +1,854 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>🕺 Vibe Detector</title>
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
+import { useState, useEffect, useRef } from "react";
+
+const MOMENTS_EXEMPLES = [
+  "J'ai appelé ma prof 'maman' devant toute la classe",
+  "J'ai glissé dans l'escalier du lycée un lundi matin",
+  "J'ai liké une photo Instagram de 2015 en stalker",
+  "J'ai envoyé un vocal de 3 minutes au mauvais groupe",
+  "J'ai fait semblant de pas voir quelqu'un pendant 10 minutes",
+  "J'ai dit 'toi aussi' quand le serveur m'a dit bon appétit",
+];
+
+const REACTIONS_IA = [
+  { emoji: "💀", label: "FATAL" },
+  { emoji: "😭", label: "TRAGIQUE" },
+  { emoji: "🔥", label: "INFERNAL" },
+  { emoji: "⚰️", label: "R.I.P." },
+  { emoji: "🫣", label: "INSUPPORTABLE" },
+];
+
+const RALENTIS = [
+  "... le sol... se rapproche...",
+  "... les regards... se tournent...",
+  "... le silence... s'installe...",
+  "... le temps... se fige...",
+  "... l'embarras... monte...",
+  "... il est... trop tard...",
+];
+
+const MUSIQUES = [
+  { nom: "Requiem for a Dream", emoji: "🎻", bpm: "40 BPM" },
+  { nom: "Interstellar Theme", emoji: "🪐", bpm: "35 BPM" },
+  { nom: "The Dark Knight Theme", emoji: "🦇", bpm: "30 BPM" },
+  { nom: "Schindler's List", emoji: "🎻", bpm: "25 BPM" },
+];
+
+export default function ReplayDeHonte() {
+  const [phase, setPhase] = useState("accueil"); 
+  // accueil | saisie | analyse | cinematique | verdict
+  const [moment, setMoment] = useState("");
+  const [nomPersonnage, setNomPersonnage] = useState("");
+  const [score, setScore] = useState(0);
+  const [musiqueChoisie, setMusiqueChoisie] = useState(null);
+  const [reactionChoisie, setReactionChoisie] = useState(null);
+  const [ralentiIndex, setRalentiIndex] = useState(0);
+  const [cinematiqueStep, setCinematiqueStep] = useState(0);
+  const [texteIA, setTexteIA] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
+  const [replays, setReplays] = useState([]);
+  const [currentReplay, setCurrentReplay] = useState(null);
+  const [vignetteIntensity, setVignetteIntensity] = useState(0);
+  const [slowMotionText, setSlowMotionText] = useState("");
+  const intervalRef = useRef(null);
+
+  // Effet de vignette pulsante
+  useEffect(() => {
+    if (phase === "cinematique") {
+      intervalRef.current = setInterval(() => {
+        setVignetteIntensity(prev => prev === 0 ? 0.7 : 0);
+      }, 800);
     }
-
-    body {
-      background: #0a0a0a;
-      color: white;
-      font-family: 'Courier New', monospace;
-      height: 100vh;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-    }
-
-    #app {
-      width: 100%;
-      height: 100vh;
-      position: relative;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-    }
-
-    /* === ÉCRAN ACCUEIL === */
-    #screen-home {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 24px;
-      text-align: center;
-      padding: 32px;
-    }
-
-    .logo {
-      font-size: 72px;
-      animation: bounce 1.5s infinite;
-    }
-
-    @keyframes bounce {
-      0%, 100% { transform: translateY(0) rotate(0deg); }
-      50% { transform: translateY(-12px) rotate(5deg); }
-    }
-
-    h1 {
-      font-size: 28px;
-      font-weight: 900;
-      letter-spacing: -1px;
-      background: linear-gradient(135deg, #ff006e, #fb5607, #ffbe0b, #8338ec);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-
-    .subtitle {
-      color: #666;
-      font-size: 14px;
-      line-height: 1.6;
-      max-width: 280px;
-    }
-
-    .btn-start {
-      background: linear-gradient(135deg, #ff006e, #8338ec);
-      border: none;
-      border-radius: 50px;
-      padding: 18px 48px;
-      font-size: 18px;
-      font-weight: 700;
-      color: white;
-      cursor: pointer;
-      font-family: 'Courier New', monospace;
-      letter-spacing: 1px;
-      transition: transform 0.1s, box-shadow 0.1s;
-      box-shadow: 0 0 30px rgba(255, 0, 110, 0.4);
-    }
-
-    .btn-start:hover {
-      transform: scale(1.05);
-      box-shadow: 0 0 50px rgba(255, 0, 110, 0.6);
-    }
-
-    .btn-start:active {
-      transform: scale(0.97);
-    }
-
-    .disclaimer {
-      color: #333;
-      font-size: 11px;
-      max-width: 260px;
-      line-height: 1.5;
-    }
-
-    /* === ÉCRAN CAMÉRA === */
-    #screen-camera {
-      display: none;
-      width: 100%;
-      height: 100vh;
-      position: relative;
-    }
-
-    #video {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      transform: scaleX(-1);
-    }
-
-    /* Overlay scanlines */
-    .scanlines {
-      position: absolute;
-      inset: 0;
-      background: repeating-linear-gradient(
-        0deg,
-        transparent,
-        transparent 2px,
-        rgba(0,0,0,0.08) 2px,
-        rgba(0,0,0,0.08) 4px
-      );
-      pointer-events: none;
-      z-index: 2;
-    }
-
-    /* Cadre de scan */
-    .scan-frame {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 220px;
-      height: 280px;
-      z-index: 3;
-      pointer-events: none;
-    }
-
-    .scan-frame::before,
-    .scan-frame::after {
-      content: '';
-      position: absolute;
-      width: 40px;
-      height: 40px;
-      border-color: #ff006e;
-      border-style: solid;
-    }
-
-    .scan-frame::before {
-      top: 0;
-      left: 0;
-      border-width: 3px 0 0 3px;
-    }
-
-    .scan-frame::after {
-      bottom: 0;
-      right: 0;
-      border-width: 0 3px 3px 0;
-    }
-
-    .scan-frame-tr,
-    .scan-frame-bl {
-      position: absolute;
-      width: 40px;
-      height: 40px;
-      border-color: #ff006e;
-      border-style: solid;
-    }
-
-    .scan-frame-tr {
-      top: 0;
-      right: 0;
-      border-width: 3px 3px 0 0;
-    }
-
-    .scan-frame-bl {
-      bottom: 0;
-      left: 0;
-      border-width: 0 0 3px 3px;
-    }
-
-    /* Ligne de scan animée */
-    .scan-line {
-      position: absolute;
-      left: 3px;
-      right: 3px;
-      height: 2px;
-      background: linear-gradient(90deg, transparent, #ff006e, #fb5607, transparent);
-      box-shadow: 0 0 10px #ff006e;
-      animation: scan 2s linear infinite;
-      opacity: 0;
-    }
-
-    @keyframes scan {
-      0% { top: 3px; opacity: 0; }
-      10% { opacity: 1; }
-      90% { opacity: 1; }
-      100% { top: calc(100% - 3px); opacity: 0; }
-    }
-
-    .scan-label {
-      position: absolute;
-      bottom: -28px;
-      left: 50%;
-      transform: translateX(-50%);
-      font-size: 11px;
-      color: #ff006e;
-      letter-spacing: 3px;
-      white-space: nowrap;
-      text-transform: uppercase;
-    }
-
-    /* Header */
-    .cam-header {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      padding: 20px 24px;
-      background: linear-gradient(to bottom, rgba(0,0,0,0.7), transparent);
-      z-index: 5;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .cam-title {
-      font-size: 16px;
-      font-weight: 700;
-      letter-spacing: 2px;
-      color: white;
-    }
-
-    .live-dot {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 12px;
-      color: #ff4444;
-    }
-
-    .live-dot::before {
-      content: '';
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: #ff4444;
-      animation: pulse-dot 1s infinite;
-    }
-
-    @keyframes pulse-dot {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.3; }
-    }
-
-    /* Bouton scan */
-    .btn-scan-wrapper {
-      position: absolute;
-      bottom: 60px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 5;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 16px;
-    }
-
-    .btn-scan {
-      width: 80px;
-      height: 80px;
-      border-radius: 50%;
-      background: white;
-      border: 4px solid rgba(255,255,255,0.3);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 28px;
-      transition: transform 0.1s;
-      box-shadow: 0 0 0 0 rgba(255,255,255,0.4);
-      animation: pulse-btn 2s infinite;
-    }
-
-    @keyframes pulse-btn {
-      0% { box-shadow: 0 0 0 0 rgba(255,255,255,0.4); }
-      70% { box-shadow: 0 0 0 15px rgba(255,255,255,0); }
-      100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); }
-    }
-
-    .btn-scan:active {
-      transform: scale(0.92);
-    }
-
-    .btn-scan-hint {
-      font-size: 12px;
-      color: rgba(255,255,255,0.6);
-      letter-spacing: 1px;
-    }
-
-    /* Bouton retour */
-    .btn-back {
-      background: rgba(255,255,255,0.1);
-      border: 1px solid rgba(255,255,255,0.2);
-      border-radius: 50px;
-      padding: 8px 20px;
-      color: white;
-      font-size: 12px;
-      cursor: pointer;
-      font-family: 'Courier New', monospace;
-      letter-spacing: 1px;
-    }
-
-    /* === OVERLAY RÉSULTAT === */
-    #result-overlay {
-      position: absolute;
-      inset: 0;
-      z-index: 10;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      flex-direction: column;
-      gap: 20px;
-    }
-
-    .result-bg {
-      position: absolute;
-      inset: 0;
-      background: rgba(0,0,0,0.85);
-      backdrop-filter: blur(4px);
-    }
-
-    .result-card {
-      position: relative;
-      z-index: 1;
-      text-align: center;
-      padding: 40px 32px;
-      max-width: 340px;
-      width: 90%;
-      animation: resultPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-    }
-
-    @keyframes resultPop {
-      from { transform: scale(0.5) rotate(-5deg); opacity: 0; }
-      to { transform: scale(1) rotate(0deg); opacity: 1; }
-    }
-
-    .result-emoji {
-      font-size: 80px;
-      display: block;
-      margin-bottom: 16px;
-      animation: wobble 0.6s ease-out 0.2s;
-    }
-
-    @keyframes wobble {
-      0% { transform: rotate(-10deg); }
-      30% { transform: rotate(10deg); }
-      60% { transform: rotate(-5deg); }
-      100% { transform: rotate(0deg); }
-    }
-
-    .result-tag {
-      display: inline-block;
-      background: linear-gradient(135deg, #ff006e, #8338ec);
-      border-radius: 4px;
-      padding: 4px 12px;
-      font-size: 11px;
-      letter-spacing: 3px;
-      color: white;
-      margin-bottom: 16px;
-      text-transform: uppercase;
-    }
-
-    .result-vibe {
-      font-size: 30px;
-      font-weight: 900;
-      line-height: 1.2;
-      margin-bottom: 12px;
-      color: white;
-    }
-
-    .result-precision {
-      font-size: 13px;
-      color: #aaa;
-      line-height: 1.6;
-      margin-bottom: 8px;
-    }
-
-    .result-accuracy {
-      font-size: 12px;
-      color: #ff006e;
-      letter-spacing: 1px;
-    }
-
-    .result-actions {
-      position: relative;
-      z-index: 1;
-      display: flex;
-      gap: 12px;
-    }
-
-    .btn-retry {
-      background: linear-gradient(135deg, #ff006e, #8338ec);
-      border: none;
-      border-radius: 50px;
-      padding: 14px 32px;
-      font-size: 15px;
-      font-weight: 700;
-      color: white;
-      cursor: pointer;
-      font-family: 'Courier New', monospace;
-    }
-
-    .btn-again {
-      background: rgba(255,255,255,0.1);
-      border: 1px solid rgba(255,255,255,0.2);
-      border-radius: 50px;
-      padding: 14px 24px;
-      font-size: 13px;
-      color: white;
-      cursor: pointer;
-      font-family: 'Courier New', monospace;
-    }
-
-    /* === ÉCRAN CHARGEMENT === */
-    #screen-loading {
-      display: none;
-      flex-direction: column;
-      align-items: center;
-      gap: 20px;
-      position: absolute;
-      inset: 0;
-      z-index: 8;
-      background: rgba(0,0,0,0.9);
-      justify-content: center;
-    }
-
-    .loading-text {
-      font-size: 16px;
-      color: #ff006e;
-      letter-spacing: 2px;
-      animation: flicker 0.5s infinite;
-    }
-
-    @keyframes flicker {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.6; }
-    }
-
-    .loading-steps {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      text-align: left;
-      min-width: 240px;
-    }
-
-    .loading-step {
-      font-size: 13px;
-      color: #444;
-      transition: color 0.3s;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .loading-step.active {
-      color: #ffbe0b;
-    }
-
-    .loading-step.done {
-      color: #06d6a0;
-    }
-
-    .step-icon {
-      width: 16px;
-      text-align: center;
-    }
-
-    .loading-bar-wrapper {
-      width: 240px;
-      height: 3px;
-      background: #222;
-      border-radius: 99px;
-      overflow: hidden;
-    }
-
-    .loading-bar {
-      height: 100%;
-      background: linear-gradient(90deg, #ff006e, #8338ec);
-      border-radius: 99px;
-      width: 0%;
-      transition: width 0.3s ease;
-    }
-  </style>
-</head>
-<body>
-
-<div id="app">
-
-  <!-- ACCUEIL -->
-  <div id="screen-home">
-    <div class="logo">🕺</div>
-    <h1>VIBE DETECTOR</h1>
-    <p class="subtitle">
-      Pointe ton téléphone vers quelqu'un.<br>
-      Notre IA quantique pseudo-sémantique analyse sa vibe en temps réel.
-    </p>
-    <button class="btn-start" onclick="startCamera()">
-      SCANNER UNE VIBE
-    </button>
-    <p class="disclaimer">
-      * Précision de 99.7% garantie. Résultats basés sur des algorithmes entièrement inventés. Aucune logique réelle n'a été blessée.
-    </p>
-  </div>
-
-  <!-- CAMÉRA -->
-  <div id="screen-camera">
-    <video id="video" autoplay playsinline muted></video>
-    <div class="scanlines"></div>
-
-    <div class="scan-frame">
-      <div class="scan-frame-tr"></div>
-      <div class="scan-frame-bl"></div>
-      <div class="scan-line"></div>
-      <div class="scan-label">VIBE SCAN v4.2</div>
-    </div>
-
-    <div class="cam-header">
-      <div class="cam-title">🕺 VIBEDETECT</div>
-      <div style="display:flex; gap:12px; align-items:center;">
-        <div class="live-dot">LIVE</div>
-        <button class="btn-back" onclick="stopCamera()">✕ QUITTER</button>
-      </div>
-    </div>
-
-    <div class="btn-scan-wrapper">
-      <button class="btn-scan" onclick="scanVibe()">🔍</button>
-      <div class="btn-scan-hint">APPUIE POUR SCANNER</div>
-    </div>
-
-    <!-- Loading overlay -->
-    <div id="screen-loading">
-      <div class="loading-text">ANALYSE EN COURS...</div>
-      <div class="loading-steps" id="loading-steps"></div>
-      <div class="loading-bar-wrapper">
-        <div class="loading-bar" id="loading-bar"></div>
-      </div>
-    </div>
-
-    <!-- Résultat overlay -->
-    <div id="result-overlay">
-      <div class="result-bg" onclick="closeResult()"></div>
-      <div class="result-card">
-        <span class="result-emoji" id="result-emoji">🤔</span>
-        <div class="result-tag">VIBE DÉTECTÉE</div>
-        <div class="result-vibe" id="result-vibe">—</div>
-        <div class="result-precision" id="result-precision">—</div>
-        <div class="result-accuracy" id="result-accuracy">—</div>
-      </div>
-      <div class="result-actions">
-        <button class="btn-retry" onclick="scanVibe(); closeResult();">🔄 RESCANNER</button>
-        <button class="btn-again" onclick="closeResult()">← RETOUR</button>
-      </div>
-    </div>
-
-  </div>
-
-</div>
-
-<script>
-  // =============================================
-  // BASE DE VIBES
-  // =============================================
-  const vibes = [
-    {
-      emoji: "😮‍💨",
-      vibe: "Énergie de prof fatigué",
-      precision: "Quelqu'un qui a arrêté d'expliquer les choses à voix haute mais continue dans sa tête.",
-      tag: "NRJ : 12%"
-    },
-    {
-      emoji: "🌟",
-      vibe: "Main character",
-      precision: "Marche comme si une OST épique jouait en fond. Regarde les fenêtres pour voir son reflet.",
-      tag: "PLOT ARMOR : MAX"
-    },
-    {
-      emoji: "🫥",
-      vibe: "NPC louche",
-      precision: "Debout là mais quelque chose cloche. Spawn point probablement mal configuré.",
-      tag: "COMPORTEMENT : SUSPECT"
-    },
-    {
-      emoji: "☕",
-      vibe: "Caféine critique",
-      precision: "Pas encore humain. Le café est en route. Ne pas interagir avant 10h30.",
-      tag: "STATUT : EN VEILLE"
-    },
-    {
-      emoji: "🎭",
-      vibe: "Extrovertie de façade",
-      precision: "Rit fort mais rentre chez elle pour câliner son chat et regarder des docs true crime.",
-      tag: "MODE : SOCIAL BATTERY 8%"
-    },
-    {
-      emoji: "🌀",
-      vibe: "Pensée dissociée niveau 3",
-      precision: "Présente physiquement, absente spirituellement. Probablement en train de refaire mentalement une conversation de 2019.",
-      tag: "LOCALISATION : INCONNUE"
-    },
-    {
-      emoji: "🦅",
-      vibe: "Ragequit imminent",
-      precision: "Sourit mais les yeux ne suivent pas. Dernier avertissement avant départ silencieux.",
-      tag: "PATIENCE : 3%"
-    },
-    {
-      emoji: "📱",
-      vibe: "Chill suprême",
-      precision: "N'a pas de problèmes, n'a que des situations. Quelqu'un qui dort bien.",
-      tag: "CORTISOL : 0.0"
-    },
-    {
-      emoji: "🔮",
-      vibe: "Mystique de supermarché",
-      precision: "Achète des cristaux mais paye en Carte Bleue. Croit aux signes mais arrive toujours en retard.",
-      tag: "FRÉQUENCE : 432hz"
-    },
-    {
-      emoji: "🐺",
-      vibe: "Loup solitaire avec Spotify",
-      precision: "Écoute de la musique pour ne pas parler. Playlist intitulée 'pour conduire la nuit' écoutée en plein midi.",
-      tag: "CONNEXIONS SOCIALES : 3 MAX"
-    },
-    {
-      emoji: "🤓",
-      vibe: "Geek en mode incognito",
-      precision: "Connaît le lore complet de 3 franchises mais fait semblant que non. Cache ses t-shirts fandom en public.",
-      tag: "TABS OUVERTES : 47"
-    },
-    {
-      emoji: "🛸",
-      vibe: "Alien en mission d'observation",
-      precision: "Étudie les comportements humains pour un rapport. Trouve les embouteillages fascinants.",
-      tag: "ORIGINE : INCONNUE"
-    },
-    {
-      emoji: "🎪",
-      vibe: "Chaos organisé",
-      precision: "Semble improviser mais a en fait tout calculé. Le désordre, c'est son système.",
-      tag: "PLAN : IL EN A PAS BESOIN"
-    },
-    {
-      emoji: "🌊",
-      vibe: "Flow state permanent",
-      precision: "Tout lui réussit naturellement. Probablement born under a lucky star. Ou juste reposé.",
-      tag: "LUCK STAT : 97"
-    },
-    {
-      emoji: "🧸",
-      vibe: "Adulte fonctionnel doux",
-      precision: "Paie ses impôts à temps et a quand même une collection de peluches. Équilibre parfait.",
-      tag: "MATURITÉ : SELECTIVE"
-    },
-    {
-      emoji: "⚡",
-      vibe: "Hyperfocus dangereux",
-      precision: "A oublié de manger depuis midi. Peut tout accomplir sauf s'arrêter. Ne pas interrompre.",
-      tag: "DOPAMINE : SPIKE"
-    },
-    {
-      emoji: "🌙",
-      vibe: "Vampire social réformé",
-      precision: "Aime les gens mais en petites doses soigneusement dosées comme un médicament.",
-      tag: "RECHARGE : SOLITUDE"
-    },
-    {
-      emoji: "🎲",
-      vibe: "Chaotique neutre certifié",
-      precision: "Prend les décisions importantes au pile ou face. A réussi sa vie comme ça. Philosophiquement pas tort.",
-      tag: "ALIGNEMENT : CHAOTIQUE NEUTRE"
-    },
-    {
-      emoji: "🦋",
-      vibe: "En pleine transition de personnalité",
-      precision: "Était quelqu'un d'autre il y a 6 mois. Sera quelqu'un d'autre dans 6 mois. Le voyage c'est le but.",
-      tag: "VERSION : BETA"
-    },
-    {
-      emoji: "🏔️",
-      vibe: "Introvertie assumée et en paix",
-      precision: "N'a pas honte de partir à 21h. A déjà refusé des invitations avec 'j'ai quelque chose' (rester chez elle).",
-      tag: "EXCUSES INVENTÉES : ∞"
-    },
-    {
-      emoji: "🤡",
-      vibe: "Ironique jusqu'à la moelle",
-      precision: "Dit tout au second degré tellement fort qu'elle-même ne sait plus ce qu'elle pense vraiment.",
-      tag: "SINCÉRITÉ : MASQUÉE"
-    },
-    {
-      emoji: "🦝",
-      vibe: "Opportuniste bienveillant",
-      precision: "Là où il y a de la nourriture gratuite, il est là. Mais te donnera sa dernière part. Énigmatique.",
-      tag: "INSTINCT : SURVIE DOUCE"
-    },
-    {
-      emoji: "📡",
-      vibe: "Capte tout, dit rien",
-      precision: "Observe depuis le fond de la pièce. Sait exactement ce qui se passe entre tout le monde. Garde ça pour lui.",
-      tag: "INTEL : CLASSIFIED"
-    },
-    {
-      emoji: "🌺",
-      vibe: "Soft life activée",
-      precision: "A choisi la paix comme lifestyle. Rituels du matin, bougies, plantes. Anti-drama par idéologie.",
-      tag: "CORTISOL : -40%"
-    },
-    {
-      emoji: "🎯",
-      vibe: "Sigma en civil",
-      precision: "Fait ses trucs seul, réussit seul, repart seul. Pas misanthrope, juste autosuffisant. Légèrement intimidant.",
-      tag: "DÉPENDANCES SOCIALES : 0"
-    }
-  ];
-
-  // =============================================
-  // ÉTAPES DE FAUX CHARGEMENT
-  // =============================================
-  const loadingStepsData = [
-    "Scan des micro-expressions faciales...",
-    "Analyse de l'aura électromagnétique...",
-    "Consultation de la base de données vibratoire...",
-    "Calibration de l'algorithme de vibe...",
-    "Vérification de l'alignement astral...",
-    "Résultat trouvé ✦"
-  ];
-
-  // =============================================
-  // ÉTAT
-  // =============================================
-  let stream = null;
-
-  // =============================================
-  // CAMÉRA
-  // =============================================
-  async function startCamera() {
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' },
-        audio: false
-      });
-    } catch(e) {
-      // fallback caméra frontale
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-      } catch(err) {
-        alert("Impossible d'accéder à la caméra. Active les permissions ! 📷");
-        return;
-      }
-    }
-
-    const video = document.getElementById('video');
-    video.srcObject = stream;
-
-    document.getElementById('screen-home').style.display = 'none';
-    document.getElementById('screen-camera').style.display = 'block';
-  }
-
-  function stopCamera() {
-    if (stream) {
-      stream.getTracks().forEach(t => t.stop());
-      stream = null;
-    }
-    document.getElementById('screen-camera').style.display = 'none';
-    document.getElementById('screen-home').style.display = 'flex';
-    closeResult();
-  }
-
-  // =============================================
-  // SCAN + FAUX LOADING
-  // =============================================
-  function scanVibe() {
-    const loading = document.getElementById('screen-loading');
-    const stepsContainer = document.getElementById('loading-steps');
-    const bar = document.getElementById('loading-bar');
-
-    loading.style.display = 'flex';
-    stepsContainer.innerHTML = '';
-    bar.style.width = '0%';
-
-    // Créer les étapes
-    const stepEls = loadingStepsData.map((text, i) => {
-      const el = document.createElement('div');
-      el.className = 'loading-step';
-      el.innerHTML = `<span class="step-icon">○</span><span>${text}</span>`;
-      stepsContainer.appendChild(el);
-      return el;
-    });
-
-    let current = 0;
-
-    function nextStep() {
-      if (current > 0) {
-        stepEls[current - 1].className = 'loading-step done';
-        stepEls[current - 1].querySelector('.step-icon').textContent = '✓';
-      }
-
-      if (current < stepEls.length) {
-        stepEls[current].className = 'loading-step active';
-        stepEls[current].querySelector('.step-icon').textContent = '▶';
-        bar.style.width = ((current + 1) / stepEls.length * 100) + '%';
-        current++;
-
-        const delay = 300 + Math.random() * 400;
-        setTimeout(nextStep, delay);
+    return () => clearInterval(intervalRef.current);
+  }, [phase]);
+
+  // Typewriter effect
+  const typeWriter = (text, callback) => {
+    setIsTyping(true);
+    setTexteIA("");
+    let i = 0;
+    const interval = setInterval(() => {
+      if (i < text.length) {
+        setTexteIA(prev => prev + text[i]);
+        i++;
       } else {
-        // Terminé
-        setTimeout(() => {
-          loading.style.display = 'none';
-          showResult();
-        }, 400);
+        clearInterval(interval);
+        setIsTyping(false);
+        if (callback) callback();
       }
-    }
+    }, 30);
+  };
 
-    nextStep();
+  const analyserMoment = () => {
+    if (!moment.trim()) return;
+    
+    // Calcul du score de honte
+    const motsHonteux = ["prof", "maman", "glissé", "liké", "vocal", "mauvais", "semblant", "serveur"];
+    let scoreCalc = Math.floor(Math.random() * 30) + 60;
+    motsHonteux.forEach(mot => {
+      if (moment.toLowerCase().includes(mot)) scoreCalc = Math.min(99, scoreCalc + 5);
+    });
+    
+    setScore(scoreCalc);
+    setMusiqueChoisie(MUSIQUES[Math.floor(Math.random() * MUSIQUES.length)]);
+    setReactionChoisie(REACTIONS_IA[Math.floor(Math.random() * REACTIONS_IA.length)]);
+    setPhase("analyse");
+    
+    setTimeout(() => {
+      setPhase("cinematique");
+      setCinematiqueStep(0);
+      lancerCinematique();
+    }, 3000);
+  };
+
+  const lancerCinematique = () => {
+    const steps = [
+      () => {
+        setCinematiqueStep(1);
+        setSlowMotionText("RALENTI x0.25");
+      },
+      () => {
+        setCinematiqueStep(2);
+        setRalentiIndex(Math.floor(Math.random() * RALENTIS.length));
+      },
+      () => {
+        setCinematiqueStep(3);
+      },
+      () => {
+        setCinematiqueStep(4);
+      },
+      () => {
+        // Générer le verdict IA
+        const verdicts = [
+          `Après analyse approfondie de ton moment de honte, l'IA confirme : tu aurais pu disparaître dans le sol. Score officiel : ${Math.floor(Math.random() * 30) + 70}/100 sur l'échelle internationale de la honte.`,
+          `Ceci est cliniquement classifié comme un "Moment de Mortification Extrême". Des études montrent que ton cerveau rejouera ceci à 3h du matin pendant minimum 7 ans.`,
+          `L'IA a scanné 4 millions de moments gênants dans sa base de données. Le tien se classe dans le top 5% des situations les plus irréversibles.`,
+        ];
+        const replayData = {
+          id: Date.now(),
+          moment,
+          score: Math.floor(Math.random() * 30) + 60,
+          verdict: verdicts[Math.floor(Math.random() * verdicts.length)],
+          musique: MUSIQUES[Math.floor(Math.random() * MUSIQUES.length)],
+          reaction: REACTIONS_IA[Math.floor(Math.random() * REACTIONS_IA.length)],
+          date: new Date().toLocaleDateString("fr-FR"),
+        };
+        setCurrentReplay(replayData);
+        setReplays(prev => [replayData, ...prev.slice(0, 4)]);
+        setPhase("verdict");
+        typeWriter(replayData.verdict);
+      },
+    ];
+
+    steps.forEach((step, index) => {
+      setTimeout(step, index * 2000);
+    });
+  };
+
+  const reset = () => {
+    setPhase("saisie");
+    setMoment("");
+    setCinematiqueStep(0);
+    setTexteIA("");
+    setCurrentReplay(null);
+    setVignetteIntensity(0);
+  };
+
+  const utiliserExemple = () => {
+    const exemple = MOMENTS_EXEMPLES[Math.floor(Math.random() * MOMENTS_EXEMPLES.length)];
+    setMoment(exemple);
+  };
+
+  // =================== RENDERS ===================
+
+  if (phase === "accueil") {
+    return (
+      <div style={{
+        minHeight: "100vh",
+        background: "linear-gradient(135deg, #0a0a0a 0%, #1a0000 50%, #0a0a0a 100%)",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        fontFamily: "'Georgia', serif",
+        color: "white",
+        padding: "20px",
+        position: "relative",
+        overflow: "hidden",
+      }}>
+        {/* Particules de honte */}
+        {[...Array(6)].map((_, i) => (
+          <div key={i} style={{
+            position: "absolute",
+            fontSize: "2rem",
+            opacity: 0.1,
+            top: `${Math.random() * 100}%`,
+            left: `${Math.random() * 100}%`,
+            animation: `float${i} 10s infinite`,
+          }}>💀</div>
+        ))}
+
+        <div style={{
+          textAlign: "center",
+          maxWidth: "500px",
+          zIndex: 1,
+        }}>
+          <div style={{ fontSize: "5rem", marginBottom: "10px" }}>🎬</div>
+          
+          <div style={{
+            fontSize: "0.8rem",
+            letterSpacing: "0.4rem",
+            color: "#ff4444",
+            textTransform: "uppercase",
+            marginBottom: "10px",
+          }}>
+            UNE PRODUCTION IA
+          </div>
+          
+          <h1 style={{
+            fontSize: "3.5rem",
+            fontWeight: "900",
+            margin: "0",
+            background: "linear-gradient(180deg, #ffffff 0%, #ff4444 100%)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            lineHeight: "1",
+          }}>
+            REPLAY
+          </h1>
+          <h1 style={{
+            fontSize: "2.5rem",
+            fontWeight: "900",
+            margin: "0 0 10px 0",
+            color: "#ff4444",
+            letterSpacing: "0.3rem",
+          }}>
+            DE HONTE
+          </h1>
+          
+          <div style={{
+            width: "100px",
+            height: "2px",
+            background: "#ff4444",
+            margin: "0 auto 20px",
+          }}/>
+          
+          <p style={{
+            fontSize: "1rem",
+            color: "#aaa",
+            lineHeight: "1.6",
+            marginBottom: "30px",
+          }}>
+            Revivez vos moments les plus embarrassants<br/>
+            en version <strong style={{color: "#ff6666"}}>CINÉMATIQUE DRAMATIQUE</strong><br/>
+            avec ralenti, musique et analyse IA
+          </p>
+
+          <div style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "10px",
+            alignItems: "center",
+          }}>
+            <button
+              onClick={() => setPhase("saisie")}
+              style={{
+                padding: "18px 50px",
+                fontSize: "1.1rem",
+                background: "linear-gradient(135deg, #cc0000, #ff4444)",
+                color: "white",
+                border: "none",
+                borderRadius: "4px",
+                cursor: "pointer",
+                letterSpacing: "0.2rem",
+                textTransform: "uppercase",
+                fontWeight: "bold",
+                boxShadow: "0 0 30px rgba(255,68,68,0.4)",
+              }}
+            >
+              🎭 COMMENCER LE SUPPLICE
+            </button>
+            
+            {replays.length > 0 && (
+              <button
+                onClick={() => setPhase("historique")}
+                style={{
+                  padding: "12px 30px",
+                  fontSize: "0.9rem",
+                  background: "transparent",
+                  color: "#666",
+                  border: "1px solid #333",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                }}
+              >
+                📼 Mes replays ({replays.length})
+              </button>
+            )}
+          </div>
+
+          <p style={{ color: "#333", fontSize: "0.8rem", marginTop: "30px" }}>
+            ⚠️ Déconseillé aux âmes sensibles
+          </p>
+        </div>
+      </div>
+    );
   }
 
-  // =============================================
-  // RÉSULTAT
-  // =============================================
-  function showResult() {
-    const vibe = vibes[Math.floor(Math.random() * vibes.length)];
-    const accuracy = (92 + Math.random() * 7.9).toFixed(1);
+  if (phase === "saisie") {
+    return (
+      <div style={{
+        minHeight: "100vh",
+        background: "#0a0a0a",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        fontFamily: "'Georgia', serif",
+        color: "white",
+        padding: "20px",
+      }}>
+        <div style={{ maxWidth: "500px", width: "100%" }}>
+          
+          <button onClick={() => setPhase("accueil")} style={{
+            background: "none", border: "none", color: "#555",
+            cursor: "pointer", fontSize: "0.9rem", marginBottom: "30px",
+            padding: 0,
+          }}>
+            ← Retour
+          </button>
 
-    document.getElementById('result-emoji').textContent = vibe.emoji;
-    document.getElementById('result-vibe').textContent = vibe.vibe;
-    document.getElementById('result-precision').textContent = vibe.precision;
-    document.getElementById('result-accuracy').textContent = `■ PRÉCISION : ${accuracy}% — ${vibe.tag}`;
+          <div style={{
+            fontSize: "0.8rem",
+            letterSpacing: "0.3rem",
+            color: "#ff4444",
+            textTransform: "uppercase",
+            marginBottom: "10px",
+          }}>
+            ÉTAPE 1/3 — LE CRIME
+          </div>
 
-    const overlay = document.getElementById('result-overlay');
-    overlay.style.display = 'flex';
+          <h2 style={{ fontSize: "1.8rem", marginBottom: "8px", lineHeight: "1.2" }}>
+            Décris ton moment<br/>
+            <span style={{ color: "#ff4444" }}>de honte</span>
+          </h2>
+          
+          <p style={{ color: "#555", fontSize: "0.85rem", marginBottom: "25px" }}>
+            Sois honnête. L'IA ne juge pas... enfin si, mais avec style.
+          </p>
+
+          <textarea
+            value={moment}
+            onChange={(e) => setMoment(e.target.value)}
+            placeholder="Ex: J'ai dit 'je t'aime' à la caisse du supermarché..."
+            style={{
+              width: "100%",
+              height: "120px",
+              background: "#111",
+              border: "1px solid #333",
+              borderRadius: "8px",
+              color: "white",
+              padding: "15px",
+              fontSize: "1rem",
+              fontFamily: "inherit",
+              resize: "none",
+              outline: "none",
+              boxSizing: "border-box",
+              transition: "border-color 0.3s",
+            }}
+            onFocus={(e) => e.target.style.borderColor = "#ff4444"}
+            onBlur={(e) => e.target.style.borderColor = "#333"}
+          />
+
+          <div style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginTop: "8px",
+            marginBottom: "20px",
+          }}>
+            <span style={{ color: "#333", fontSize: "0.8rem" }}>
+              {moment.length}/200 caractères
+            </span>
+            <button
+              onClick={utiliserExemple}
+              style={{
+                background: "none",
+                border: "1px solid #333",
+                color: "#555",
+                padding: "6px 14px",
+                borderRadius: "4px",
+                cursor: "pointer",
+                fontSize: "0.8rem",
+              }}
+            >
+              🎲 Exemple aléatoire
+            </button>
+          </div>
+
+          {/* Exemples rapides */}
+          <div style={{ marginBottom: "25px" }}>
+            <p style={{ color: "#444", fontSize: "0.75rem", marginBottom: "10px", textTransform: "uppercase", letterSpacing: "0.2rem" }}>
+              Classiques de la honte :
+            </p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+              {MOMENTS_EXEMPLES.slice(0, 3).map((ex, i) => (
+                <button
+                  key={i}
+                  onClick={() => setMoment(ex)}
+                  style={{
+                    background: "#111",
+                    border: "1px solid #222",
+                    color: "#666",
+                    padding: "6px 10px",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                    fontSize: "0.75rem",
+                    textAlign: "left",
+                    maxWidth: "200px",
+                  }}
+                >
+                  {ex.substring(0, 35)}...
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <button
+            onClick={analyserMoment}
+            disabled={!moment.trim()}
+            style={{
+              width: "100%",
+              padding: "18px",
+              fontSize: "1.1rem",
+              background: moment.trim() 
+                ? "linear-gradient(135deg, #cc0000, #ff4444)" 
+                : "#1a1a1a",
+              color: moment.trim() ? "white" : "#333",
+              border: "none",
+              borderRadius: "4px",
+              cursor: moment.trim() ? "pointer" : "not-allowed",
+              letterSpacing: "0.15rem",
+              textTransform: "uppercase",
+              fontWeight: "bold",
+              transition: "all 0.3s",
+            }}
+          >
+            🎬 LANCER LE REPLAY
+          </button>
+        </div>
+      </div>
+    );
   }
 
-  function closeResult() {
-    document.getElementById('result-overlay').style.display = 'none';
+  if (phase === "analyse") {
+    return (
+      <div style={{
+        minHeight: "100vh",
+        background: "#000",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        fontFamily: "'Georgia', serif",
+        color: "white",
+      }}>
+        <div style={{ textAlign: "center" }}>
+          <div style={{
+            width: "60px",
+            height: "60px",
+            border: "3px solid #ff4444",
+            borderTop: "3px solid transparent",
+            borderRadius: "50%",
+            animation: "spin 1s linear infinite",
+            margin: "0 auto 30px",
+          }}/>
+          
+          <p style={{ color: "#ff4444", letterSpacing: "0.3rem", fontSize: "0.85rem" }}>
+            ANALYSE EN COURS...
+          </p>
+          <p style={{ color: "#333", fontSize: "0.8rem", marginTop: "10px" }}>
+            Calcul du niveau de mortification...
+          </p>
+          
+          <style>{`
+            @keyframes spin { to { transform: rotate(360deg); } }
+          `}</style>
+        </div>
+      </div>
+    );
   }
-</script>
 
-</body>
-</html>
-  
+  if (phase === "cinematique") {
+    return (
+      <div style={{
+        minHeight: "100vh",
+        background: "#000",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        fontFamily: "'Georgia', serif",
+        color: "white",
+        position: "relative",
+        overflow: "hidden",
+      }}>
+        {/* Bandes cinématiques */}
+        <div style={{
+          position: "absolute", top: 0, left: 0, right: 0,
+          height: "80px", background: "#000", zIndex: 10,
+        }}/>
+        <div style={{
+          position: "absolute", bottom: 0, left: 0, right: 0,
+          height: "80px", background: "#000", zIndex: 10,
+        }}/>
+
+        {/* Vignette */}
+        <div style={{
+          position: "absolute", inset: 0,
+          boxShadow: `inset 0 0 150px rgba(0,0,0,${vignetteIntensity})`,
+          zIndex: 5, pointerEvents: "none",
+          transition: "box-shadow 0.8s",
+        }}/>
+
+        <div style={{ textAlign: "center", zIndex: 6, padding: "20px" }}>
+          
+          {/* Step 1: Titre + ralenti */}
+          {cinematiqueStep >= 1 && (
+            <div style={{
+              animation: "fadeIn 1s ease-in",
+              marginBottom: "20px",
+            }}>
+              <div style={{
+                fontSize: "0.7rem",
+                letterSpacing: "0.5rem",
+                color: "#ff4444",
+                marginBottom: "10px",
+              }}>
+                🎬 {slowMotionText}
+              </div>
+            </div>
+          )}
+
+          {/* Le moment en gros */}
+          {cinematiqueStep >= 1 && (
+            <div style={{
+              fontSize: "1.3rem",
+              color: "#fff",
+              maxWidth: "400px",
+              lineHeight: "1.8",
+              letterSpacing: "0.05rem",
+              animation: "slowReveal 2s ease-out",
+              filter: "brightness(1.2)",
+            }}>
+              "{moment}"
+            </div>
+          )}
+
+          {/* Ralenti texte */}
+          {cinematiqueStep >= 2 && (
+            <div style={{
+              fontSize: "1.6rem",
+              color: "#ff4444",
+              marginTop: "30px",
+              fontStyle: "italic",
+              animation: "fadeIn 1.5s ease-in",
+              letterSpacing: "0.2rem",
+            }}>
+              {RALENTIS[ralentiIndex]}
+            </div>
+          )}
+
+          {/* Musique */}
+          {cinematiqueStep >= 3 && musiqueChoisie && (
+            <div style={{
+              marginTop: "30px",
+              animation: "fadeIn 1s ease-in",
+              color: "#666",
+              fontSize: "0.85rem",
+            }}>
+              <div style={{ fontSize: "2rem", marginBottom: "5px" }}>
+                {musiqueChoisie.emoji}
+              </div>
+              <span>♪ {musiqueChoisie.nom}</span>
+              <span style={{ marginLeft: "10px", color: "#333" }}>
+                {musiqueChoisie.bpm}
+              </span>
+            </div>
+          )}
+
+          {/* Réaction */}
+          {cinematiqueStep >= 4 && reactionChoisie && (
+            <div style={{
+              marginTop: "30px",
+              animation: "bigReveal 0.5s ease-out",
+            }}>
+              <div style={{ fontSize: "5rem" }}>{reactionChoisie.emoji}</div>
+              <div style={{
+                fontSize: "2rem",
+                fontWeight: "900",
+                letterSpacing: "0.5rem",
+                color: "#ff4444",
+              }}>
+                {reactionChoisie.label}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <style>{`
+          @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+          @keyframes slowReveal { 
+            from { opacity: 0; transform: scale(1.1); filter: blur(5px); } 
+            to { opacity: 1; transform: scale(1); filter: blur(0); } 
+          }
+          @keyframes bigReveal { 
+            from { transform: scale(0.5); opacity: 0; } 
+            to { transform: scale(1); opacity: 1; } 
+          }
+        `}</style>
+      </div>
+    );
+  }
+
+  if (phase === "verdict" && currentReplay) {
+    return (
+      <div style={{
+        minHeight: "100vh",
+        background: "linear-gradient(180deg, #000 0%, #0a0000 100%)",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        fontFamily: "'Georgia', serif",
+        color: "white",
+        padding: "20px",
+      }}>
+        <div style={{ maxWidth: "500px", width: "100%", textAlign: "center" }}>
+          
+          {/* Score de honte */}
+          <div style={{
+            width: "120px",
+            height: "120px",
+            borderRadius: "50%",
+            border: "3px solid #ff4444",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            margin: "0 auto 25px",
+            background: "radial-gradient(circle, #200000, #000)",
+            boxShadow: "0 0 40px rgba(255,68,68,0.3)",
+          }}>
+            <div style={{ fontSize: "2.5rem", fontWeight: "900", color: "#ff4444" }}>
+              {currentReplay.score}
+            </div>
+            <div style={{ fontSize: "0.6rem", color: "#666", letterSpacing: "0.15rem" }}>
+              HONTE/100
+            </div>
+          </div>
+
+          <div style={{
+            fontSize: "0.8rem",
+            letterSpacing: "0.3rem",
+            color: "#ff4444",
+            textTransform: "uppercase",
+            marginBottom: "15px",
+          }}>
+            VERDICT DE L'IA
+          </div>
+
+          <div style={{
+            background: "#0d0d0d",
+            border: "1px solid #1a1a1a",
+            borderLeft: "3px solid #ff4444",
+            borderRadius: "8px",
+            padding: "20px",
+            marginBottom: "25px",
+            minHeight: "80px",
+            textAlign: "left",
+          }}>
+            <p style={{
+              color: "#ccc",
+              lineHeight: "1.7",
+              fontSize: "0.95rem",
+              margin: 0,
+            }}>
+              {texteIA}
+              {isTyping && (
+                <span style={{
+                  display: "inline-block",
+                  width: "2px",
+                  height: "1em",
+                  background: "#ff4444",
+                  marginLeft: "2px",
+                  animation: "blink 0.7s infinite",
+                }}/>
+              )}
+            </p>
+          </div>
+
+          {/* Infos cinéma */}
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: "10px",
+            marginBottom: "25px",
+          }}>
+            <div style={{
+              background: "#0d0d0d",
+              border: "1px solid #1a1a1a",
+              borderRadius: "8px",
+              padding: "12px",
+            }}>
+              <div style={{ fontSize: "1.5rem" }}>{currentReplay.musique.emoji}</div>
+              <div style={{ fontSize: "0.7rem", color: "#555", marginTop: "4px" }}>BANDE SON</div>
+              <div style={{ fontSize: "0.8rem", color: "#888" }}>{currentReplay.musique.nom}</div>
+            </div>
+            <div style={{
+              background: "#0d0d0d",
+              border: "1px solid #1a1a1a",
+              borderRadius: "8px",
+              padding: "12px",
+            }}>
+              <div style={{ fontSize: "1.5rem" }}>{currentReplay.reaction.emoji}</div>
+              <div style={{ fontSize: "0.7rem", color: "#555", marginTop: "4px" }}>CLASSIFICATION</div>
+              <div style={{ fontSize: "0.8rem", color: "#888" }}>{currentReplay.reaction.label}</div>
+            </div>
+          </div>
+
+          {/* Jauge */}
+          <div style={{ marginBottom: "25px" }}>
+            <div style={{
+              display: "flex",
+              justifyContent: "space-between",
+              marginBottom: "6px",
+            }}>
+              <span style={{ fontSize: "0.75rem", color: "#444" }}>Niveau de honte</span>
+              <span style={{ fontSize: "0.75rem", color: "#ff4444" }}>{currentReplay.score}%</span>
+            </div>
+            <div style={{
+              height: "6px",
+              background: "#111",
+              borderRadius: "3px",
+              overflow: "hidden",
+            }}>
+              <div style={{
+                height: "100%",
+                width: `${currentReplay.score}%`,
+                background: "linear-gradient(90deg, #ff4444, #cc0000)",
+                borderRadius: "3px",
+                transition: "width 1s ease-out",
+              }}/>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+            <button
+              onClick={reset}
+              style={{
+                padding: "16px",
+                background: "linear-gradient(135deg, #cc0000, #ff4444)",
+                color: "white",
+                border: "none",
+                borderRadius: "4px",
+                cursor: "pointer",
+                fontSize: "1rem",
+                letterSpacing: "0.15rem",
+                textTransform: "uppercase",
+                fontWeight: "bold",
+              }}
+            >
+              🔄 NOUVEAU REPLAY
+            </button>
+            <button
+              onClick={() => setPhase("accueil")}
+              style={{
+                padding: "12px",
+                background: "transparent",
+                color: "#444",
+                border: "1px solid #222",
+                borderRadius: "4px",
+                cursor: "pointer",
+                fontSize: "0.85rem",
+              }}
+            >
+              🏠 Accueil
+            </button>
+          </div>
+
+          <p style={{ color: "#222", fontSize: "0.75rem", marginTop: "20px" }}>
+            📼 Replay #{replays.length} sauvegardé dans ta collection de honte
+          </p>
+        </div>
+
+        <style>{`
+          @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+        `}</style>
+      </div>
+    );
+  }
+
+  // Historique
+  if (phase === "historique") {
+    return (
+      <div style={{
+        minHeight: "100vh",
+        background: "#0a0a0a",
+        fontFamily: "'Georgia', serif",
+        color: "white",
+        padding: "20px",
+      }}>
+        <div style={{ maxWidth: "500px", margin: "0 auto" }}>
+          <button onClick={() => setPhase("accueil")} style={{
+            background: "none", border: "none", color: "#555",
+            cursor: "pointer", fontSize: "0.9rem", marginBottom: "20px", padding: 0,
+          }}>
+            ← Retour
+          </button>
+
+          <h2 style={{ color: "#ff4444", letterSpacing: "0.2rem", textTransform: "uppercase" }}>
+            📼 Mes Replays de Honte
+          </h2>
+          <p style={{ color: "#333", fontSize: "0.85rem", marginBottom: "25px" }}>
+            Ta collection personnelle de traumatismes cinématiques
+          </p>
+
+          {replays.map((replay) => (
+            <div key={replay.id} style={{
+              background: "#0d0d0d",
+              border: "1px solid #1a1a1a",
+              borderLeft: "3px solid #ff4444",
+              borderRadius: "8px",
+              padding: "15px",
+              marginBottom: "12px",
+            }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
+                <span style={{ fontSize: "1.5rem" }}>{replay.reaction.emoji}</span>
+                <div style={{ textAlign: "right" }}>
+                  <span style={{
+                    fontSize: "1.2rem",
+                    fontWeight: "900",
+                    color: "#ff4444",
+                  }}>{replay.score}</span>
+                  <span style={{ color: "#333", fontSize: "0.7rem" }}>/100</span>
+                </div>
+              </div>
+              <p style={{ color: "#888", fontSize: "0.85rem", margin: "0 0 6px 0", lineHeight: "1.4" }}>
+                "{replay.moment}"
+              </p>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span style={{ color: "#333", fontSize: "0.7rem" }}>
+                  {replay.musique.emoji} {replay.musique.nom}
+                </span>
+                <span style={{ color: "#222", fontSize: "0.7rem" }}>{replay.date}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return null;
+}
