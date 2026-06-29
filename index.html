@@ -1,15 +1,15 @@
 import { useState, useEffect, useRef } from "react";
 
-const MOMENTS_EXEMPLES = [
-  "J'ai appelé ma prof 'maman' devant toute la classe",
+const MOMENTS = [
+  "J'ai appelé ma prof maman devant toute la classe",
   "J'ai glissé dans l'escalier du lycée un lundi matin",
   "J'ai liké une photo Instagram de 2015 en stalker",
   "J'ai envoyé un vocal de 3 minutes au mauvais groupe",
   "J'ai fait semblant de pas voir quelqu'un pendant 10 minutes",
-  "J'ai dit 'toi aussi' quand le serveur m'a dit bon appétit",
+  "J'ai dit toi aussi quand le serveur m'a dit bon appétit",
 ];
 
-const REACTIONS_IA = [
+const REACTIONS = [
   { emoji: "💀", label: "FATAL" },
   { emoji: "😭", label: "TRAGIQUE" },
   { emoji: "🔥", label: "INFERNAL" },
@@ -22,397 +22,246 @@ const RALENTIS = [
   "... les regards... se tournent...",
   "... le silence... s'installe...",
   "... le temps... se fige...",
-  "... l'embarras... monte...",
-  "... il est... trop tard...",
 ];
 
 const MUSIQUES = [
   { nom: "Requiem for a Dream", emoji: "🎻", bpm: "40 BPM" },
   { nom: "Interstellar Theme", emoji: "🪐", bpm: "35 BPM" },
-  { nom: "The Dark Knight Theme", emoji: "🦇", bpm: "30 BPM" },
-  { nom: "Schindler's List", emoji: "🎻", bpm: "25 BPM" },
+  { nom: "The Dark Knight", emoji: "🦇", bpm: "30 BPM" },
+  { nom: "Schindler's List", emoji: "🎼", bpm: "25 BPM" },
 ];
 
-export default function ReplayDeHonte() {
+const VERDICTS = [
+  "Apres analyse approfondie, l'IA confirme : tu aurais pu disparaitre dans le sol. Cliniquement classe comme irreversible.",
+  "Moment de Mortification Extreme detecte. Ton cerveau rejouera ceci a 3h du matin pendant minimum 7 ans.",
+  "L'IA a scanne 4 millions de moments genants. Le tien se classe dans le top 5% des situations les plus catastrophiques.",
+];
+
+const rand = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+const styles = {
+  page: {
+    minHeight: "100vh",
+    fontFamily: "Georgia, serif",
+    color: "white",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "20px",
+    boxSizing: "border-box",
+  },
+  btn: {
+    padding: "16px 40px",
+    fontSize: "1rem",
+    background: "linear-gradient(135deg,#cc0000,#ff4444)",
+    color: "white",
+    border: "none",
+    borderRadius: "4px",
+    cursor: "pointer",
+    letterSpacing: "0.15rem",
+    textTransform: "uppercase",
+    fontWeight: "bold",
+  },
+  btnGhost: {
+    padding: "12px 30px",
+    fontSize: "0.85rem",
+    background: "transparent",
+    color: "#555",
+    border: "1px solid #333",
+    borderRadius: "4px",
+    cursor: "pointer",
+  },
+  card: {
+    background: "#0d0d0d",
+    border: "1px solid #1a1a1a",
+    borderLeft: "3px solid #ff4444",
+    borderRadius: "8px",
+    padding: "20px",
+    marginBottom: "15px",
+    width: "100%",
+    boxSizing: "border-box",
+  },
+};
+
+export default function App() {
   const [phase, setPhase] = useState("accueil");
   const [moment, setMoment] = useState("");
-  const [score, setScore] = useState(0);
-  const [musiqueChoisie, setMusiqueChoisie] = useState(null);
-  const [reactionChoisie, setReactionChoisie] = useState(null);
-  const [ralentiIndex, setRalentiIndex] = useState(0);
-  const [cinematiqueStep, setCinematiqueStep] = useState(0);
-  const [texteIA, setTexteIA] = useState("");
-  const [isTyping, setIsTyping] = useState(false);
+  const [step, setStep] = useState(0);
+  const [texte, setTexte] = useState("");
+  const [typing, setTyping] = useState(false);
   const [replays, setReplays] = useState([]);
-  const [currentReplay, setCurrentReplay] = useState(null);
-  const [vignetteIntensity, setVignetteIntensity] = useState(0);
-  const [slowMotionText, setSlowMotionText] = useState("");
-  const intervalRef = useRef(null);
+  const [replay, setReplay] = useState(null);
+  const [vignette, setVignette] = useState(0);
+  const [ralenti, setRalenti] = useState("");
+  const [musique, setMusique] = useState(null);
+  const [reaction, setReaction] = useState(null);
+  const timer = useRef(null);
 
   useEffect(() => {
-    if (phase === "cinematique") {
-      intervalRef.current = setInterval(() => {
-        setVignetteIntensity((prev) => (prev === 0 ? 0.7 : 0));
+    if (phase === "cine") {
+      timer.current = setInterval(() => {
+        setVignette((v) => (v === 0 ? 0.8 : 0));
       }, 800);
     }
-    return () => clearInterval(intervalRef.current);
+    return () => clearInterval(timer.current);
   }, [phase]);
 
   const typeWriter = (text) => {
-    setIsTyping(true);
-    setTexteIA("");
+    setTyping(true);
+    setTexte("");
     let i = 0;
-    const interval = setInterval(() => {
+    const iv = setInterval(() => {
       if (i < text.length) {
-        setTexteIA((prev) => prev + text[i]);
+        setTexte((p) => p + text[i]);
         i++;
       } else {
-        clearInterval(interval);
-        setIsTyping(false);
+        clearInterval(iv);
+        setTyping(false);
       }
-    }, 30);
+    }, 25);
   };
 
-  const analyserMoment = () => {
+  const lancer = () => {
     if (!moment.trim()) return;
-    const motsHonteux = ["prof","maman","glissé","liké","vocal","mauvais","semblant","serveur"];
-    let scoreCalc = Math.floor(Math.random() * 30) + 60;
-    motsHonteux.forEach((mot) => {
-      if (moment.toLowerCase().includes(mot)) scoreCalc = Math.min(99, scoreCalc + 5);
-    });
-    setScore(scoreCalc);
-    setMusiqueChoisie(MUSIQUES[Math.floor(Math.random() * MUSIQUES.length)]);
-    setReactionChoisie(REACTIONS_IA[Math.floor(Math.random() * REACTIONS_IA.length)]);
+    const score = Math.min(99, Math.floor(Math.random() * 30) + 65);
+    const m = rand(MUSIQUES);
+    const r = rand(REACTIONS);
+    const v = rand(VERDICTS);
+    const data = {
+      id: Date.now(),
+      moment,
+      score,
+      verdict: v,
+      musique: m,
+      reaction: r,
+      date: new Date().toLocaleDateString("fr-FR"),
+    };
+    setMusique(m);
+    setReaction(r);
+    setReplay(data);
     setPhase("analyse");
-    setTimeout(() => {
-      setPhase("cinematique");
-      setCinematiqueStep(0);
-      lancerCinematique();
-    }, 3000);
-  };
 
-  const lancerCinematique = () => {
-    const steps = [
-      () => { setCinematiqueStep(1); setSlowMotionText("RALENTI x0.25"); },
-      () => { setCinematiqueStep(2); setRalentiIndex(Math.floor(Math.random() * RALENTIS.length)); },
-      () => { setCinematiqueStep(3); },
-      () => { setCinematiqueStep(4); },
-      () => {
-        const verdicts = [
-          "Après analyse approfondie de ton moment de honte, l'IA confirme : tu aurais pu disparaître dans le sol. Cliniquement classifié comme irréversible.",
-          "Ceci est cliniquement classifié comme un Moment de Mortification Extrême. Ton cerveau rejouera ceci à 3h du matin pendant minimum 7 ans.",
-          "L'IA a scanné 4 millions de moments gênants. Le tien se classe dans le top 5% des situations les plus catastrophiques jamais enregistrées.",
-        ];
-        const replayData = {
-          id: Date.now(),
-          moment,
-          score: Math.floor(Math.random() * 30) + 60,
-          verdict: verdicts[Math.floor(Math.random() * verdicts.length)],
-          musique: MUSIQUES[Math.floor(Math.random() * MUSIQUES.length)],
-          reaction: REACTIONS_IA[Math.floor(Math.random() * REACTIONS_IA.length)],
-          date: new Date().toLocaleDateString("fr-FR"),
-        };
-        setCurrentReplay(replayData);
-        setReplays((prev) => [replayData, ...prev.slice(0, 4)]);
-        setPhase("verdict");
-        typeWriter(replayData.verdict);
-      },
-    ];
-    steps.forEach((step, index) => {
-      setTimeout(step, index * 2000);
-    });
+    setTimeout(() => {
+      setPhase("cine");
+      setStep(0);
+      const timings = [
+        [500,  () => { setStep(1); setRalenti(rand(RALENTIS)); }],
+        [2500, () => setStep(2)],
+        [4500, () => setStep(3)],
+        [6500, () => setStep(4)],
+        [8000, () => {
+          setReplays((prev) => [data, ...prev.slice(0, 4)]);
+          setPhase("verdict");
+          typeWriter(v);
+        }],
+      ];
+      timings.forEach(([t, fn]) => setTimeout(fn, t));
+    }, 2500);
   };
 
   const reset = () => {
     setPhase("saisie");
     setMoment("");
-    setCinematiqueStep(0);
-    setTexteIA("");
-    setCurrentReplay(null);
-    setVignetteIntensity(0);
+    setStep(0);
+    setTexte("");
+    setReplay(null);
+    setVignette(0);
   };
 
-  const utiliserExemple = () => {
-    setMoment(MOMENTS_EXEMPLES[Math.floor(Math.random() * MOMENTS_EXEMPLES.length)]);
-  };
-
-  // ── ACCUEIL ──────────────────────────────────────────────
+  // ACCUEIL
   if (phase === "accueil") {
     return (
-      <div
-        style={{
-          minHeight: "100vh",
-          background: "linear-gradient(135deg,#0a0a0a 0%,#1a0000 50%,#0a0a0a 100%)",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          fontFamily: "Georgia,serif",
-          color: "white",
-          padding: "20px",
-          textAlign: "center",
-        }}
-      >
-        <div style={{ fontSize: "5rem", marginBottom: "10px" }}>🎬</div>
-
-        <div
-          style={{
-            fontSize: "0.8rem",
-            letterSpacing: "0.4rem",
-            color: "#ff4444",
-            textTransform: "uppercase",
-            marginBottom: "10px",
-          }}
-        >
-          UNE PRODUCTION IA
-        </div>
-
-        <h1
-          style={{
-            fontSize: "3.5rem",
-            fontWeight: 900,
-            margin: 0,
-            background: "linear-gradient(180deg,#ffffff 0%,#ff4444 100%)",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-            lineHeight: 1,
-          }}
-        >
-          REPLAY
-        </h1>
-        <h1
-          style={{
-            fontSize: "2.5rem",
-            fontWeight: 900,
-            margin: "0 0 10px",
-            color: "#ff4444",
-            letterSpacing: "0.3rem",
-          }}
-        >
-          DE HONTE
-        </h1>
-
-        <div
-          style={{
-            width: "100px",
-            height: "2px",
-            background: "#ff4444",
-            margin: "0 auto 20px",
-          }}
-        />
-
-        <p
-          style={{
-            fontSize: "1rem",
-            color: "#aaa",
-            lineHeight: 1.6,
-            marginBottom: "30px",
-            maxWidth: "380px",
-          }}
-        >
+      <div style={{ ...styles.page, background: "linear-gradient(135deg,#0a0a0a,#1a0000,#0a0a0a)", textAlign: "center" }}>
+        <div style={{ fontSize: "4rem", marginBottom: "10px" }}>🎬</div>
+        <p style={{ color: "#ff4444", letterSpacing: "0.4rem", fontSize: "0.8rem", margin: "0 0 5px" }}>UNE PRODUCTION IA</p>
+        <h1 style={{ fontSize: "3rem", fontWeight: 900, margin: 0, color: "white", letterSpacing: "0.1rem" }}>REPLAY</h1>
+        <h2 style={{ fontSize: "2rem", fontWeight: 900, margin: "0 0 15px", color: "#ff4444", letterSpacing: "0.3rem" }}>DE HONTE</h2>
+        <div style={{ width: "80px", height: "2px", background: "#ff4444", margin: "0 auto 20px" }} />
+        <p style={{ color: "#999", maxWidth: "350px", lineHeight: 1.6, marginBottom: "30px" }}>
           Revivez vos moments les plus embarrassants en version{" "}
-          <strong style={{ color: "#ff6666" }}>CINÉMATIQUE DRAMATIQUE</strong>
-          <br />
-          avec ralenti, musique et analyse IA
+          <span style={{ color: "#ff6666", fontWeight: "bold" }}>CINEMATIQUE DRAMATIQUE</span>
         </p>
-
         <div style={{ display: "flex", flexDirection: "column", gap: "10px", alignItems: "center" }}>
-          <button
-            onClick={() => setPhase("saisie")}
-            style={{
-              padding: "18px 50px",
-              fontSize: "1.1rem",
-              background: "linear-gradient(135deg,#cc0000,#ff4444)",
-              color: "white",
-              border: "none",
-              borderRadius: "4px",
-              cursor: "pointer",
-              letterSpacing: "0.2rem",
-              textTransform: "uppercase",
-              fontWeight: "bold",
-              boxShadow: "0 0 30px rgba(255,68,68,0.4)",
-            }}
-          >
+          <button style={styles.btn} onClick={() => setPhase("saisie")}>
             🎭 COMMENCER LE SUPPLICE
           </button>
-
           {replays.length > 0 && (
-            <button
-              onClick={() => setPhase("historique")}
-              style={{
-                padding: "12px 30px",
-                fontSize: "0.9rem",
-                background: "transparent",
-                color: "#666",
-                border: "1px solid #333",
-                borderRadius: "4px",
-                cursor: "pointer",
-              }}
-            >
+            <button style={styles.btnGhost} onClick={() => setPhase("historique")}>
               📼 Mes replays ({replays.length})
             </button>
           )}
         </div>
-
-        <p style={{ color: "#333", fontSize: "0.8rem", marginTop: "30px" }}>
-          ⚠️ Déconseillé aux âmes sensibles
-        </p>
+        <p style={{ color: "#333", fontSize: "0.75rem", marginTop: "25px" }}>⚠️ Déconseillé aux âmes sensibles</p>
       </div>
     );
   }
 
-  // ── SAISIE ───────────────────────────────────────────────
+  // SAISIE
   if (phase === "saisie") {
     return (
-      <div
-        style={{
-          minHeight: "100vh",
-          background: "#0a0a0a",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          fontFamily: "Georgia,serif",
-          color: "white",
-          padding: "20px",
-        }}
-      >
-        <div style={{ maxWidth: "500px", width: "100%" }}>
-          <button
-            onClick={() => setPhase("accueil")}
-            style={{
-              background: "none",
-              border: "none",
-              color: "#555",
-              cursor: "pointer",
-              fontSize: "0.9rem",
-              marginBottom: "30px",
-              padding: 0,
-            }}
-          >
+      <div style={{ ...styles.page, background: "#0a0a0a" }}>
+        <div style={{ maxWidth: "480px", width: "100%" }}>
+          <button onClick={() => setPhase("accueil")} style={{ background: "none", border: "none", color: "#555", cursor: "pointer", marginBottom: "25px", padding: 0, fontSize: "0.9rem" }}>
             ← Retour
           </button>
-
-          <div
-            style={{
-              fontSize: "0.8rem",
-              letterSpacing: "0.3rem",
-              color: "#ff4444",
-              textTransform: "uppercase",
-              marginBottom: "10px",
-            }}
-          >
-            ÉTAPE 1/3 — LE CRIME
-          </div>
-
-          <h2 style={{ fontSize: "1.8rem", marginBottom: "8px", lineHeight: 1.2 }}>
-            Décris ton moment <span style={{ color: "#ff4444" }}>de honte</span>
+          <p style={{ color: "#ff4444", letterSpacing: "0.3rem", fontSize: "0.75rem", margin: "0 0 8px" }}>ÉTAPE 1/3 — LE CRIME</p>
+          <h2 style={{ fontSize: "1.8rem", margin: "0 0 8px" }}>
+            Décris ton <span style={{ color: "#ff4444" }}>moment de honte</span>
           </h2>
-
-          <p style={{ color: "#555", fontSize: "0.85rem", marginBottom: "25px" }}>
-            Sois honnête. L'IA ne juge pas… enfin si, mais avec style.
+          <p style={{ color: "#555", fontSize: "0.85rem", marginBottom: "20px" }}>
+            Sois honnête. IA ne juge pas... enfin si, mais avec style.
           </p>
-
           <textarea
             value={moment}
-            onChange={(e) => setMoment(e.target.value)}
-            placeholder="Ex: J'ai dit je t'aime à la caisse du supermarché..."
-            maxLength={200}
+            onChange={(e) => setMoment(e.target.value.slice(0, 200))}
+            placeholder="Ex: J'ai dit je t'aime a la caisse du supermarche..."
             style={{
               width: "100%",
-              height: "120px",
+              height: "110px",
               background: "#111",
               border: "1px solid #333",
               borderRadius: "8px",
               color: "white",
-              padding: "15px",
-              fontSize: "1rem",
-              fontFamily: "inherit",
+              padding: "14px",
+              fontSize: "0.95rem",
+              fontFamily: "Georgia,serif",
               resize: "none",
               outline: "none",
               boxSizing: "border-box",
             }}
           />
-
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginTop: "8px",
-              marginBottom: "20px",
-            }}
-          >
-            <span style={{ color: "#333", fontSize: "0.8rem" }}>
-              {moment.length}/200 caractères
-            </span>
+          <div style={{ display: "flex", justifyContent: "space-between", margin: "8px 0 18px" }}>
+            <span style={{ color: "#333", fontSize: "0.75rem" }}>{moment.length}/200</span>
             <button
-              onClick={utiliserExemple}
-              style={{
-                background: "none",
-                border: "1px solid #333",
-                color: "#555",
-                padding: "6px 14px",
-                borderRadius: "4px",
-                cursor: "pointer",
-                fontSize: "0.8rem",
-              }}
+              onClick={() => setMoment(rand(MOMENTS))}
+              style={{ ...styles.btnGhost, padding: "5px 12px", fontSize: "0.75rem" }}
             >
-              🎲 Exemple aléatoire
+              🎲 Exemple
             </button>
           </div>
-
-          <div style={{ marginBottom: "25px" }}>
-            <p
-              style={{
-                color: "#444",
-                fontSize: "0.75rem",
-                marginBottom: "10px",
-                textTransform: "uppercase",
-                letterSpacing: "0.2rem",
-              }}
-            >
-              Classiques de la honte :
-            </p>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-              {MOMENTS_EXEMPLES.slice(0, 3).map((ex, i) => (
+          <div style={{ marginBottom: "20px" }}>
+            <p style={{ color: "#333", fontSize: "0.7rem", letterSpacing: "0.2rem", marginBottom: "8px" }}>EXEMPLES RAPIDES :</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+              {MOMENTS.slice(0, 3).map((ex, i) => (
                 <button
                   key={i}
                   onClick={() => setMoment(ex)}
-                  style={{
-                    background: "#111",
-                    border: "1px solid #222",
-                    color: "#666",
-                    padding: "6px 10px",
-                    borderRadius: "4px",
-                    cursor: "pointer",
-                    fontSize: "0.75rem",
-                    textAlign: "left",
-                  }}
+                  style={{ ...styles.btnGhost, padding: "8px 12px", textAlign: "left", fontSize: "0.8rem" }}
                 >
-                  {ex.substring(0, 35)}…
+                  {ex}
                 </button>
               ))}
             </div>
           </div>
-
           <button
-            onClick={analyserMoment}
+            onClick={lancer}
             disabled={!moment.trim()}
             style={{
+              ...styles.btn,
               width: "100%",
-              padding: "18px",
-              fontSize: "1.1rem",
-              background: moment.trim()
-                ? "linear-gradient(135deg,#cc0000,#ff4444)"
-                : "#1a1a1a",
-              color: moment.trim() ? "white" : "#333",
-              border: "none",
-              borderRadius: "4px",
+              opacity: moment.trim() ? 1 : 0.3,
               cursor: moment.trim() ? "pointer" : "not-allowed",
-              letterSpacing: "0.15rem",
-              textTransform: "uppercase",
-              fontWeight: "bold",
             }}
           >
             🎬 LANCER LE REPLAY
@@ -422,147 +271,60 @@ export default function ReplayDeHonte() {
     );
   }
 
-  // ── ANALYSE ──────────────────────────────────────────────
+  // ANALYSE
   if (phase === "analyse") {
     return (
-      <div
-        style={{
-          minHeight: "100vh",
-          background: "#000",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          fontFamily: "Georgia,serif",
-          color: "white",
-        }}
-      >
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-        <div
-          style={{
-            width: "60px",
-            height: "60px",
-            border: "3px solid #ff4444",
-            borderTop: "3px solid transparent",
-            borderRadius: "50%",
-            animation: "spin 1s linear infinite",
-            marginBottom: "30px",
-          }}
-        />
-        <p style={{ color: "#ff4444", letterSpacing: "0.3rem", fontSize: "0.85rem" }}>
-          ANALYSE EN COURS…
-        </p>
-        <p style={{ color: "#333", fontSize: "0.8rem", marginTop: "10px" }}>
-          Calcul du niveau de mortification…
-        </p>
+      <div style={{ ...styles.page, background: "#000", textAlign: "center" }}>
+        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+        <div style={{ width: "56px", height: "56px", border: "3px solid #ff4444", borderTop: "3px solid transparent", borderRadius: "50%", animation: "spin 1s linear infinite", marginBottom: "25px" }} />
+        <p style={{ color: "#ff4444", letterSpacing: "0.3rem", fontSize: "0.85rem" }}>ANALYSE EN COURS...</p>
+        <p style={{ color: "#333", fontSize: "0.8rem", marginTop: "8px" }}>Calcul du niveau de mortification...</p>
       </div>
     );
   }
 
-  // ── CINÉMATIQUE ───────────────────────────────────────────
-  if (phase === "cinematique") {
+  // CINEMATIQUE
+  if (phase === "cine") {
     return (
-      <div
-        style={{
-          minHeight: "100vh",
-          background: "#000",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          fontFamily: "Georgia,serif",
-          color: "white",
-          position: "relative",
-          overflow: "hidden",
-        }}
-      >
+      <div style={{ ...styles.page, background: "#000", position: "relative", overflow: "hidden", textAlign: "center" }}>
         <style>{`
-          @keyframes fadeIn    { from { opacity:0 } to { opacity:1 } }
-          @keyframes slowReveal {
-            from { opacity:0; transform:scale(1.1); filter:blur(5px); }
-            to   { opacity:1; transform:scale(1);   filter:blur(0);   }
-          }
-          @keyframes bigReveal {
-            from { transform:scale(0.5); opacity:0; }
-            to   { transform:scale(1);   opacity:1; }
-          }
+          @keyframes fi{from{opacity:0}to{opacity:1}}
+          @keyframes sr{from{opacity:0;transform:scale(1.08);filter:blur(4px)}to{opacity:1;transform:scale(1);filter:blur(0)}}
+          @keyframes br{from{transform:scale(0.4);opacity:0}to{transform:scale(1);opacity:1}}
         `}</style>
 
-        {/* Bandes cinéma */}
-        <div style={{ position:"absolute", top:0, left:0, right:0, height:"80px", background:"#000", zIndex:10 }} />
-        <div style={{ position:"absolute", bottom:0, left:0, right:0, height:"80px", background:"#000", zIndex:10 }} />
+        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "75px", background: "#000", zIndex: 10 }} />
+        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "75px", background: "#000", zIndex: 10 }} />
+        <div style={{ position: "absolute", inset: 0, boxShadow: `inset 0 0 120px rgba(0,0,0,${vignette})`, zIndex: 5, pointerEvents: "none", transition: "box-shadow 0.8s" }} />
 
-        {/* Vignette pulsante */}
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            boxShadow: `inset 0 0 150px rgba(0,0,0,${vignetteIntensity})`,
-            zIndex: 5,
-            pointerEvents: "none",
-            transition: "box-shadow 0.8s",
-          }}
-        />
-
-        <div style={{ textAlign: "center", zIndex: 6, padding: "20px" }}>
-          {cinematiqueStep >= 1 && (
-            <div style={{ animation: "fadeIn 1s ease-in", marginBottom: "20px" }}>
-              <div style={{ fontSize: "0.7rem", letterSpacing: "0.5rem", color: "#ff4444" }}>
-                🎬 {slowMotionText}
-              </div>
-            </div>
+        <div style={{ zIndex: 6, maxWidth: "400px", width: "100%" }}>
+          {step >= 1 && (
+            <p style={{ color: "#ff4444", fontSize: "0.7rem", letterSpacing: "0.5rem", animation: "fi 1s ease-in", marginBottom: "15px" }}>
+              🎬 RALENTI x0.25
+            </p>
           )}
-
-          {cinematiqueStep >= 1 && (
-            <div
-              style={{
-                fontSize: "1.3rem",
-                color: "#fff",
-                maxWidth: "400px",
-                lineHeight: 1.8,
-                animation: "slowReveal 2s ease-out",
-              }}
-            >
+          {step >= 1 && (
+            <p style={{ fontSize: "1.2rem", color: "#fff", lineHeight: 1.8, animation: "sr 2s ease-out" }}>
               "{moment}"
+            </p>
+          )}
+          {step >= 2 && (
+            <p style={{ fontSize: "1.5rem", color: "#ff4444", fontStyle: "italic", animation: "fi 1.5s ease-in", marginTop: "25px", letterSpacing: "0.15rem" }}>
+              {ralenti}
+            </p>
+          )}
+          {step >= 3 && musique && (
+            <div style={{ marginTop: "25px", animation: "fi 1s ease-in", color: "#555" }}>
+              <div style={{ fontSize: "2rem" }}>{musique.emoji}</div>
+              <p style={{ margin: "5px 0 0" }}>♪ {musique.nom} — {musique.bpm}</p>
             </div>
           )}
-
-          {cinematiqueStep >= 2 && (
-            <div
-              style={{
-                fontSize: "1.6rem",
-                color: "#ff4444",
-                marginTop: "30px",
-                fontStyle: "italic",
-                animation: "fadeIn 1.5s ease-in",
-                letterSpacing: "0.2rem",
-              }}
-            >
-              {RALENTIS[ralentiIndex]}
-            </div>
-          )}
-
-          {cinematiqueStep >= 3 && musiqueChoisie && (
-            <div style={{ marginTop: "30px", animation: "fadeIn 1s ease-in", color: "#666" }}>
-              <div style={{ fontSize: "2rem", marginBottom: "5px" }}>{musiqueChoisie.emoji}</div>
-              <span>♪ {musiqueChoisie.nom}</span>
-              <span style={{ marginLeft: "10px", color: "#333" }}>{musiqueChoisie.bpm}</span>
-            </div>
-          )}
-
-          {cinematiqueStep >= 4 && reactionChoisie && (
-            <div style={{ marginTop: "30px", animation: "bigReveal 0.5s ease-out" }}>
-              <div style={{ fontSize: "5rem" }}>{reactionChoisie.emoji}</div>
-              <div
-                style={{
-                  fontSize: "2rem",
-                  fontWeight: 900,
-                  letterSpacing: "0.5rem",
-                  color: "#ff4444",
-                }}
-              >
-                {reactionChoisie.label}
-              </div>
+          {step >= 4 && reaction && (
+            <div style={{ marginTop: "25px", animation: "br 0.5s ease-out" }}>
+              <div style={{ fontSize: "5rem" }}>{reaction.emoji}</div>
+              <p style={{ fontSize: "2rem", fontWeight: 900, color: "#ff4444", letterSpacing: "0.5rem", margin: 0 }}>
+                {reaction.label}
+              </p>
             </div>
           )}
         </div>
@@ -570,272 +332,84 @@ export default function ReplayDeHonte() {
     );
   }
 
-  // ── VERDICT ───────────────────────────────────────────────
-  if (phase === "verdict" && currentReplay) {
+  // VERDICT
+  if (phase === "verdict" && replay) {
     return (
-      <div
-        style={{
-          minHeight: "100vh",
-          background: "linear-gradient(180deg,#000 0%,#0a0000 100%)",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          fontFamily: "Georgia,serif",
-          color: "white",
-          padding: "20px",
-        }}
-      >
-        <style>{`@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }`}</style>
-
-        <div style={{ maxWidth: "500px", width: "100%", textAlign: "center" }}>
-          {/* Cercle score */}
-          <div
-            style={{
-              width: "120px",
-              height: "120px",
-              borderRadius: "50%",
-              border: "3px solid #ff4444",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              margin: "0 auto 25px",
-              background: "radial-gradient(circle,#200000,#000)",
-              boxShadow: "0 0 40px rgba(255,68,68,0.3)",
-            }}
-          >
-            <div style={{ fontSize: "2.5rem", fontWeight: 900, color: "#ff4444" }}>
-              {currentReplay.score}
-            </div>
-            <div style={{ fontSize: "0.6rem", color: "#666", letterSpacing: "0.15rem" }}>
-              HONTE/100
-            </div>
+      <div style={{ ...styles.page, background: "linear-gradient(180deg,#000,#0a0000)", textAlign: "center" }}>
+        <style>{`@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}`}</style>
+        <div style={{ maxWidth: "480px", width: "100%" }}>
+          <div style={{ width: "110px", height: "110px", borderRadius: "50%", border: "3px solid #ff4444", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", margin: "0 auto 20px", background: "radial-gradient(#200000,#000)", boxShadow: "0 0 35px rgba(255,68,68,0.3)" }}>
+            <div style={{ fontSize: "2.2rem", fontWeight: 900, color: "#ff4444" }}>{replay.score}</div>
+            <div style={{ fontSize: "0.55rem", color: "#555", letterSpacing: "0.1rem" }}>HONTE/100</div>
           </div>
 
-          <div
-            style={{
-              fontSize: "0.8rem",
-              letterSpacing: "0.3rem",
-              color: "#ff4444",
-              textTransform: "uppercase",
-              marginBottom: "15px",
-            }}
-          >
-            VERDICT DE L'IA
-          </div>
+          <p style={{ color: "#ff4444", letterSpacing: "0.3rem", fontSize: "0.75rem", margin: "0 0 12px" }}>VERDICT DE L'IA</p>
 
-          {/* Texte IA typewriter */}
-          <div
-            style={{
-              background: "#0d0d0d",
-              border: "1px solid #1a1a1a",
-              borderLeft: "3px solid #ff4444",
-              borderRadius: "8px",
-              padding: "20px",
-              marginBottom: "25px",
-              minHeight: "80px",
-              textAlign: "left",
-            }}
-          >
-            <p style={{ color: "#ccc", lineHeight: 1.7, fontSize: "0.95rem", margin: 0 }}>
-              {texteIA}
-              {isTyping && (
-                <span
-                  style={{
-                    display: "inline-block",
-                    width: "2px",
-                    height: "1em",
-                    background: "#ff4444",
-                    marginLeft: "2px",
-                    animation: "blink 0.7s infinite",
-                  }}
-                />
-              )}
+          <div style={styles.card}>
+            <p style={{ color: "#ccc", lineHeight: 1.7, margin: 0, textAlign: "left", fontSize: "0.9rem" }}>
+              {texte}
+              {typing && <span style={{ display: "inline-block", width: "2px", height: "1em", background: "#ff4444", marginLeft: "2px", animation: "blink 0.7s infinite" }} />}
             </p>
           </div>
 
-          {/* Cards musique + réaction */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: "10px",
-              marginBottom: "25px",
-            }}
-          >
-            <div
-              style={{
-                background: "#0d0d0d",
-                border: "1px solid #1a1a1a",
-                borderRadius: "8px",
-                padding: "12px",
-              }}
-            >
-              <div style={{ fontSize: "1.5rem" }}>{currentReplay.musique.emoji}</div>
-              <div style={{ fontSize: "0.7rem", color: "#555", marginTop: "4px" }}>BANDE SON</div>
-              <div style={{ fontSize: "0.8rem", color: "#888" }}>{currentReplay.musique.nom}</div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "20px" }}>
+            <div style={{ ...styles.card, marginBottom: 0, textAlign: "center" }}>
+              <div style={{ fontSize: "1.4rem" }}>{replay.musique.emoji}</div>
+              <div style={{ fontSize: "0.65rem", color: "#444", marginTop: "4px" }}>BANDE SON</div>
+              <div style={{ fontSize: "0.75rem", color: "#777", marginTop: "2px" }}>{replay.musique.nom}</div>
             </div>
-            <div
-              style={{
-                background: "#0d0d0d",
-                border: "1px solid #1a1a1a",
-                borderRadius: "8px",
-                padding: "12px",
-              }}
-            >
-              <div style={{ fontSize: "1.5rem" }}>{currentReplay.reaction.emoji}</div>
-              <div style={{ fontSize: "0.7rem", color: "#555", marginTop: "4px" }}>CLASSIFICATION</div>
-              <div style={{ fontSize: "0.8rem", color: "#888" }}>{currentReplay.reaction.label}</div>
+            <div style={{ ...styles.card, marginBottom: 0, textAlign: "center" }}>
+              <div style={{ fontSize: "1.4rem" }}>{replay.reaction.emoji}</div>
+              <div style={{ fontSize: "0.65rem", color: "#444", marginTop: "4px" }}>CLASSIFICATION</div>
+              <div style={{ fontSize: "0.75rem", color: "#777", marginTop: "2px" }}>{replay.reaction.label}</div>
             </div>
           </div>
 
-          {/* Jauge */}
-          <div style={{ marginBottom: "25px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
+          <div style={{ marginBottom: "20px", textAlign: "left" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "5px" }}>
               <span style={{ fontSize: "0.75rem", color: "#444" }}>Niveau de honte</span>
-              <span style={{ fontSize: "0.75rem", color: "#ff4444" }}>{currentReplay.score}%</span>
+              <span style={{ fontSize: "0.75rem", color: "#ff4444" }}>{replay.score}%</span>
             </div>
-            <div style={{ height: "6px", background: "#111", borderRadius: "3px", overflow: "hidden" }}>
-              <div
-                style={{
-                  height: "100%",
-                  width: `${currentReplay.score}%`,
-                  background: "linear-gradient(90deg,#ff4444,#cc0000)",
-                  borderRadius: "3px",
-                  transition: "width 1s ease-out",
-                }}
-              />
+            <div style={{ height: "5px", background: "#111", borderRadius: "3px" }}>
+              <div style={{ height: "100%", width: `${replay.score}%`, background: "linear-gradient(90deg,#ff4444,#cc0000)", borderRadius: "3px", transition: "width 1.2s ease-out" }} />
             </div>
           </div>
 
-          {/* Boutons */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-            <button
-              onClick={reset}
-              style={{
-                padding: "16px",
-                background: "linear-gradient(135deg,#cc0000,#ff4444)",
-                color: "white",
-                border: "none",
-                borderRadius: "4px",
-                cursor: "pointer",
-                fontSize: "1rem",
-                letterSpacing: "0.15rem",
-                textTransform: "uppercase",
-                fontWeight: "bold",
-              }}
-            >
-              🔄 NOUVEAU REPLAY
-            </button>
-            <button
-              onClick={() => setPhase("historique")}
-              style={{
-                padding: "12px",
-                background: "transparent",
-                color: "#555",
-                border: "1px solid #222",
-                borderRadius: "4px",
-                cursor: "pointer",
-                fontSize: "0.85rem",
-              }}
-            >
-              📼 Voir mes replays ({replays.length})
-            </button>
-            <button
-              onClick={() => setPhase("accueil")}
-              style={{
-                padding: "12px",
-                background: "transparent",
-                color: "#333",
-                border: "1px solid #111",
-                borderRadius: "4px",
-                cursor: "pointer",
-                fontSize: "0.85rem",
-              }}
-            >
-              🏠 Accueil
-            </button>
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            <button style={{ ...styles.btn, width: "100%" }} onClick={reset}>🔄 NOUVEAU REPLAY</button>
+            <button style={{ ...styles.btnGhost, width: "100%" }} onClick={() => setPhase("historique")}>📼 Mes replays ({replays.length})</button>
+            <button style={{ ...styles.btnGhost, width: "100%", color: "#333", borderColor: "#111" }} onClick={() => setPhase("accueil")}>🏠 Accueil</button>
           </div>
-
-          <p style={{ color: "#222", fontSize: "0.75rem", marginTop: "20px" }}>
-            📼 Replay #{replays.length} sauvegardé dans ta collection de honte
-          </p>
         </div>
       </div>
     );
   }
 
-  // ── HISTORIQUE ────────────────────────────────────────────
+  // HISTORIQUE
   if (phase === "historique") {
     return (
-      <div
-        style={{
-          minHeight: "100vh",
-          background: "#0a0a0a",
-          fontFamily: "Georgia,serif",
-          color: "white",
-          padding: "20px",
-        }}
-      >
-        <div style={{ maxWidth: "500px", margin: "0 auto" }}>
-          <button
-            onClick={() => setPhase("accueil")}
-            style={{
-              background: "none",
-              border: "none",
-              color: "#555",
-              cursor: "pointer",
-              fontSize: "0.9rem",
-              marginBottom: "20px",
-              padding: 0,
-            }}
-          >
+      <div style={{ minHeight: "100vh", background: "#0a0a0a", fontFamily: "Georgia,serif", color: "white", padding: "20px", boxSizing: "border-box" }}>
+        <div style={{ maxWidth: "480px", margin: "0 auto" }}>
+          <button onClick={() => setPhase("accueil")} style={{ background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: "0.9rem", marginBottom: "20px", padding: 0 }}>
             ← Retour
           </button>
-
-          <h2 style={{ color: "#ff4444", letterSpacing: "0.2rem", textTransform: "uppercase" }}>
-            📼 Mes Replays de Honte
-          </h2>
-          <p style={{ color: "#333", fontSize: "0.85rem", marginBottom: "25px" }}>
-            Ta collection personnelle de traumatismes cinématiques
-          </p>
+          <h2 style={{ color: "#ff4444", letterSpacing: "0.2rem", textTransform: "uppercase", marginBottom: "5px" }}>📼 Mes Replays</h2>
+          <p style={{ color: "#333", fontSize: "0.8rem", marginBottom: "20px" }}>Ta collection de traumatismes cinématiques</p>
 
           {replays.length === 0 && (
-            <p style={{ color: "#222", textAlign: "center", marginTop: "60px" }}>
-              Aucun replay pour l'instant… tu es trop courageux 🫡
-            </p>
+            <p style={{ color: "#222", textAlign: "center", marginTop: "50px" }}>Aucun replay pour l'instant 🫡</p>
           )}
 
-          {replays.map((replay) => (
-            <div
-              key={replay.id}
-              style={{
-                background: "#0d0d0d",
-                border: "1px solid #1a1a1a",
-                borderLeft: "3px solid #ff4444",
-                borderRadius: "8px",
-                padding: "15px",
-                marginBottom: "12px",
-              }}
-            >
+          {replays.map((r) => (
+            <div key={r.id} style={styles.card}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
-                <span style={{ fontSize: "1.5rem" }}>{replay.reaction.emoji}</span>
-                <div>
-                  <span style={{ fontSize: "1.2rem", fontWeight: 900, color: "#ff4444" }}>
-                    {replay.score}
-                  </span>
-                  <span style={{ color: "#333", fontSize: "0.7rem" }}>/100</span>
-                </div>
+                <span style={{ fontSize: "1.4rem" }}>{r.reaction.emoji}</span>
+                <span style={{ fontSize: "1.2rem", fontWeight: 900, color: "#ff4444" }}>{r.score}<span style={{ fontSize: "0.65rem", color: "#333", fontWeight: "normal" }}>/100</span></span>
               </div>
-              <p style={{ color: "#888", fontSize: "0.85rem", margin: "0 0 6px", lineHeight: 1.4 }}>
-                "{replay.moment}"
-              </p>
+              <p style={{ color: "#777", fontSize: "0.82rem", margin: "0 0 8px", lineHeight: 1.4 }}>"{r.moment}"</p>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span style={{ color: "#333", fontSize: "0.7rem" }}>
-                  {replay.musique.emoji} {replay.musique.nom}
-                </span>
-                <span style={{ color: "#222", fontSize: "0.7rem" }}>{replay.date}</span>
+                <span style={{ color: "#333", fontSize: "0.7rem" }}>{r.musique.emoji} {r.musique.nom}</span>
+                <span style={{ color: "#222", fontSize: "0.7rem" }}>{r.date}</span>
               </div>
             </div>
           ))}
