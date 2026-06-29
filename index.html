@@ -292,7 +292,7 @@
       const remaining = Math.max(0, Math.ceil((TIMEOUT - elapsed) / 1000));
       timerBar.style.width = (pct * 100) + '%';
       progressText.textContent = remaining + 's';
-      if (elapsed < TIMEOUT) {
+      if (elapsed < TIMEOUT) { 
         rafId = requestAnimationFrame(tick);
       }
     }
