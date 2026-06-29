@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Message pour Aelys</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Segoe UI', sans-serif;
+            overflow: hidden;
+        }
+
+        /* Bulles Kombucha en fond */
+        .bubble {
+            position: fixed;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, rgba(255, 180, 50, 0.3), rgba(200, 100, 20, 0.1));
+            border: 1px solid rgba(255, 180, 50, 0.2);
+            animation: floatUp linear infinite;
+            pointer-events: none;
+        }
+
+        @keyframes floatUp {
+            0% { transform: translateY(110vh) scale(0.5); opacity: 0; }
+            10% { opacity: 0.6; }
+            90% { opacity: 0.4; }
+            100% { transform: translateY(-20vh) scale(1.2); opacity: 0; }
+        }
+
+        .kombucha-label {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            font-size: 11px;
+            color: rgba(255, 180, 50, 0.4);
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            font-style: italic;
+        }
+
+        /* Card principale */
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            padding: 50px 60px;
+            text-align: center;
+            max-width: 520px;
+            width: 90%;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5);
+            position: relative;
+            z-index: 10;
+        }
+
+        .emoji {
+            font-size: 60px;
+            margin-bottom: 20px;
+            display: block;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        h1 {
+            color: #fff;
+            font-size: 1.6rem;
+            font-weight: 600;
+            line-height: 1.5;
+            margin-bottom: 40px;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+
+        h1 span {
+            color: #ffd166;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn-non {
+            padding: 14px 40px;
+            border-radius: 50px;
+            border: none;
+            cursor: pointer;
+            font-size: 1.1rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            background: linear-gradient(135deg, #ef233c, #c1121f);
+            color: white;
+            box-shadow: 0 8px 25px rgba(239, 35, 60, 0.4);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn-non:hover {
+            transform: scale(1.05);
+            box-shadow: 0 12px 30px rgba(239, 35, 60, 0.6);
+        }
+
+        .btn-oui {
+            padding: 14px 40px;
+            border-radius: 50px;
+            border: none;
+            cursor: pointer;
+            font-size: 1.1rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            background: linear-gradient(135deg, #06d6a0, #048a68);
+            color: white;
+            box-shadow: 0 8px 25px rgba(6, 214, 160, 0.4);
+            position: fixed;
+            transition: box-shadow 0.2s;
+            z-index: 999;
+        }
+
+        .btn-oui:hover {
+            box-shadow: 0 12px 30px rgba(6, 214, 160, 0.6);
+        }
+
+        /* Écran final Ciao */
+        #ciao-screen {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            text-align: center;
+            padding: 30px;
+            animation: fadeIn 1s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        #ciao-screen.active {
+            display: flex;
+        }
+
+        .ciao-emoji {
+            font-size: 80px;
+            margin-bottom: 20px;
+            animation: bounceIn 0.8s ease;
+        }
+
+        @keyframes bounceIn {
+            0% { transform: scale(0); }
+            60% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+
+        .ciao-title {
+            font-size: 3rem;
+            font-weight: 900;
+            color: #ffd166;
+            text-shadow: 0 0 30px rgba(255, 209, 102, 0.6);
+            margin-bottom: 20px;
+            letter-spacing: 5px;
+            animation: glowPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes glowPulse {
+            0%, 100% { text-shadow: 0 0 20px rgba(255, 209, 102, 0.4); }
+            50% { text-shadow: 0 0 50px rgba(255, 209, 102, 0.9), 0 0 80px rgba(255, 209, 102, 0.4); }
+        }
+
+        .ciao-subtitle {
+            font-size: 1.1rem;
+            color: rgba(255, 255, 255, 0.7);
+            max-width: 400px;
+            line-height: 1.7;
+            margin-bottom: 30px;
+        }
+
+        .ciao-subtitle span {
+            color: #ffd166;
+            font-style: italic;
+        }
+
+        .kombucha-big {
+            font-size: 0.9rem;
+            color: rgba(255, 180, 50, 0.5);
+            letter-spacing: 5px;
+            text-transform: uppercase;
+            margin-top: 10px;
+        }
+
+        /* Timer bar */
+        #timer-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #ffd166, #ef233c);
+            width: 100%;
+            transform-origin: left;
+            animation: shrink 15s linear forwards;
+            z-index: 50;
+        }
+
+        @keyframes shrink {
+            from { transform: scaleX(1); }
+            to { transform: scaleX(0); }
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- Bulles Kombucha -->
+    <div id="bubbles"></div>
+
+    <!-- Timer bar -->
+    <div id="timer-bar"></div>
+
+    <!-- Card principale -->
+    <div class="card" id="main-card">
+        <span class="emoji">🤔</span>
+        <h1>Hey <span>Aelys</span>,<br>veux-tu encore continuer<br>de me parler ?</h1>
+        <div class="buttons">
+            <button class="btn-oui" id="btn-oui">✅ Oui</button>
+            <button class="btn-non" id="btn-non">❌ Non</button>
+        </div>
+    </div>
+
+    <!-- Écran Ciao -->
+    <div id="ciao-screen">
+        <div class="ciao-emoji">👋</div>
+        <div class="ciao-title">C I A O</div>
+        <p class="ciao-subtitle">
+            D'accord, j'ai compris...<br>
+            Vu le temps que tu as mis à répondre,<br>
+            <span>c'est Ciao 👋</span>
+        </p>
+        <p class="kombucha-big">~ Ciao Kombucha ~</p>
+    </div>
+
+    <div class="kombucha-label">~ Ciao Kombucha ~</div>
+
+    <script>
+        // Génération des bulles
+        function createBubbles() {
+            const container = document.getElementById('bubbles');
+            for (let i = 0; i < 25; i++) {
+                const bubble = document.createElement('div');
+                bubble.classList.add('bubble');
+                const size = Math.random() * 60 + 15;
+                bubble.style.width = size + 'px';
+                bubble.style.height = size + 'px';
+                bubble.style.left = Math.random() * 100 + 'vw';
+                bubble.style.animationDuration = (Math.random() * 10 + 8) + 's';
+                bubble.style.animationDelay = (Math.random() * 10) + 's';
+                container.appendChild(bubble);
+            }
+        }
+        createBubbles();
+
+        // Bouton OUI qui se barre
+        const btnOui = document.getElementById('btn-oui');
+        let isMoving = false;
+
+        function moveButton() {
+            const padding = 80;
+            const maxX = window.innerWidth - btnOui.offsetWidth - padding;
+            const maxY = window.innerHeight - btnOui.offsetHeight - padding;
+            const randomX = Math.random() * maxX + padding / 2;
+            const randomY = Math.random() * maxY + padding / 2;
+            btnOui.style.left = randomX + 'px';
+            btnOui.style.top = randomY + 'px';
+        }
+
+        // Position initiale
+        btnOui.style.position = 'fixed';
+        btnOui.style.left = '55%';
+        btnOui.style.top = '55%';
+
+        btnOui.addEventListener('mouseover', moveButton);
+        btnOui.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            moveButton();
+        });
+
+        // Timer 15 secondes → afficher Ciao
+        setTimeout(() => {
+            showCiao();
+        }, 15000);
+
+        // Bouton NON → Ciao direct
+        document.getElementById('btn-non').addEventListener('click', () => {
+            showCiao();
+        });
+
+        function showCiao() {
+            const ciaoScreen = document.getElementById('ciao-screen');
+            ciaoScreen.classList.add('active');
+            document.getElementById('timer-bar').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
