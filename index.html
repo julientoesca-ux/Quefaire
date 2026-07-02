@@ -2,169 +2,272 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>Tu aurais pas dû venir</title>
+<title>Calculateur Tolérances Filetage Métrique ISO 965</title>
 <style>
-  body { background:#000; color:#00ff88; font-family:monospace; text-align:center; margin-top:18%; transition:all 0.2s; font-size:22px; }
-  #text { padding:30px; line-height:1.5; }
+  body { font-family: Arial, sans-serif; background:#f0f2f5; margin:0; padding:20px; }
+  .container { max-width: 950px; margin:auto; background:#fff; padding:25px; border-radius:10px; box-shadow:0 0 15px rgba(0,0,0,0.15);}
+  h1 { text-align:center; color:#1a3c6e; font-size:22px; }
+  .row { display:flex; gap:15px; flex-wrap:wrap; margin-bottom:15px; }
+  .field { flex:1; min-width:180px; }
+  label { font-weight:bold; display:block; margin-bottom:5px; color:#333; font-size:13px;}
+  select, input, button { width:100%; padding:8px; border:1px solid #ccc; border-radius:5px; font-size:14px; box-sizing:border-box;}
+  button { background:#1a3c6e; color:#fff; font-weight:bold; cursor:pointer; border:none; margin-top:10px;}
+  button:hover { background:#274d8a; }
+  table { width:100%; border-collapse:collapse; margin-top:20px; font-size:13px;}
+  th, td { border:1px solid #ddd; padding:8px; text-align:center; }
+  th { background:#1a3c6e; color:#fff; }
+  tr:nth-child(even){ background:#f9f9f9;}
+  .section-title { margin-top:25px; color:#1a3c6e; border-bottom:2px solid #1a3c6e; padding-bottom:5px;}
+  .highlight { font-weight:bold; color:#c0392b;}
+  .info { font-size:12px; color:#666; margin-top:5px;}
+  .badge { display:inline-block; background:#e8f0fe; color:#1a3c6e; padding:2px 8px; border-radius:12px; font-size:12px; margin-left:6px;}
 </style>
 </head>
 <body>
+<div class="container">
+  <h1>🔩 Calculateur de Tolérances de Filetage Métrique ISO 965</h1>
 
-<div id="text">t'aurais pas dû ouvrir ce site.</div>
- 
+  <div class="row">
+    <div class="field">
+      <label>Diamètre nominal (mm)</label>
+      <select id="diametre"></select>
+    </div>
+    <div class="field">
+      <label>Pas (mm)</label>
+      <select id="pas"></select>
+    </div>
+    <div class="field">
+      <label>Type</label>
+      <select id="type">
+        <option value="ext">Vis (extérieur / mâle)</option>
+        <option value="int">Écrou (intérieur / femelle)</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="field">
+      <label>Classe de tolérance</label>
+      <select id="classe"></select>
+    </div>
+    <div class="field">
+      <label>Longueur de vissage</label>
+      <select id="longueur">
+        <option value="N">Normale (N)</option>
+        <option value="S">Courte (S)</option>
+        <option value="L">Longue (L)</option>
+      </select>
+    </div>
+  </div>
+
+  <button onclick="calculer()">Calculer les tolérances</button>
+
+  <div id="resultats"></div>
+</div>
+
 <script>
-let start = Date.now();
-let clicks = 0;
-let moves = 0;
-let scrolls = 0;
-let idleTime = 0;
-let aggression = 0;
+/* ============================================================
+   BASE DE DONNÉES : pas normalisés ISO par diamètre nominal
+   ============================================================ */
+const basePas = {
+  1: [0.25, 0.2], 1.2: [0.25, 0.2], 1.6: [0.35, 0.2], 2: [0.4, 0.25],
+  2.5: [0.45, 0.35], 3: [0.5, 0.35], 4: [0.7, 0.5], 5: [0.8, 0.5],
+  6: [1, 0.75], 8: [1.25, 1, 0.75], 10: [1.5, 1.25, 1, 0.75],
+  12: [1.75, 1.5, 1.25, 1], 16: [2, 1.5, 1], 20: [2.5, 2, 1.5, 1],
+  24: [3, 2, 1.5, 1], 30: [3.5, 2, 1.5, 1], 36: [4, 3, 2, 1.5],
+  42: [4.5, 3, 2, 1.5], 48: [5, 3, 2, 1.5], 56: [5.5, 4, 3, 2],
+  64: [6, 4, 3, 2], 72: [6, 4, 3, 2], 80: [6, 4, 3, 2]
+};
 
-const textEl = document.getElementById('text');
+/* ============================================================
+   BASE DE DONNÉES : écarts fondamentaux (ES/EI, es/ei) en µm
+   selon ISO 965-1, simplifiée pour tolérances usuelles
+   ============================================================ */
+// Écart fondamental supérieur des vis (es) en µm selon position (h, g, e, d)
+function esVis(position, d, p) {
+  // Formules ISO 965-1 (approximations normalisées usuelles)
+  switch(position) {
+    case 'h': return 0;
+    case 'g': return -(0.26 * Math.pow(p, 2/3) + 0.6); // approx ISO g
+    case 'e': return -(0.5 * Math.pow(p, 2/3) + 2.1);
+    case 'd': return -(1.0 * Math.pow(p, 2/3) + 3.5);
+    default: return 0;
+  }
+}
+// Écart fondamental inférieur des écrous (EI) en µm selon position (H, G)
+function eiEcrou(position, p) {
+  switch(position) {
+    case 'H': return 0;
+    case 'G': return 0.26 * Math.pow(p, 2/3) + 0.6;
+    default: return 0;
+  }
+}
 
-function say(msg) { textEl.innerText = msg; }
-function random(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+/* Tolérances fondamentales (IT) diamètre sur flancs (d2/D2) - µm
+   Tables ISO 965-1 simplifiées (grade 4,6,8 les plus courants) */
+const T_d2 = { // Td2 (vis) en fonction de d et p, grade 6 comme référence
+  // clé: `${d}_${p}` valeurs pour grades 4,6,8 (µm)
+};
 
-// ==================== PHRASES ULTRA HARDCORE ====================
+// Fonction d'interpolation simplifiée à partir des formules ISO empiriques
+function calcTd2(d, p, grade) {
+  // Formule empirique ISO 965-1: Td2 = a * d^0.4 * p^0.1 (approche pratique)
+  const base = 90 * Math.pow(p, 0.4) * Math.pow(d, 0.1); // base grade 6 en µm
+  const facteurs = {3:0.63, 4:0.8, 6:1, 7:1.25, 8:1.6, 9:2};
+  return Math.round(base * (facteurs[grade] || 1));
+}
 
-const calm = [
-  "t'es encore là…", "tu regardes…", "intéressant… ou juste vide ?"
-];
+function calcTD2(d, p, grade) {
+  // écrou légèrement plus large que vis (~1.32x IT selon ISO)
+  return Math.round(calcTd2(d, p, grade) * 1.32);
+}
 
-const judging = [
-  "tu bouges ta souris comme un stressé", "t’as l’air perdu, c’est mignon", 
-  "t’hésites beaucoup… pathétique", "tu scroll comme si ta vie en dépendait"
-];
+// Tolérance diamètre sur flancs, diamètre nominal (d/D) et à fond de filet (d1/D1)
+function calcTD1(d, p, grade) {
+  const base = 100 * Math.pow(p, 0.6) * Math.pow(d, 0.1);
+  const facteurs = {4:0.8, 6:1, 7:1.25, 8:1.6};
+  return Math.round(base * (facteurs[grade] || 1));
+}
 
-const aggressive = [
-  "franchement t’es un putain de loser", "tu cliques au hasard, ça te va bien",
-  "t’as besoin qu’un site te parle ? triste", "regarde-toi… même du code te domine"
-];
+/* ============================================================
+   Classes de tolérances disponibles
+   ============================================================ */
+const classesVis = ["4h","4g","6h","6g","6e","6d","8g","8f","4h6h","6g6g"];
+const classesEcrou = ["4H","5H","6H","6G","7H","7G","8H"];
 
-const brutal = [
-  "t’es resté juste pour te faire insulter, sale petit pervers", 
-  "le pire c’est que tu continues… connard", 
-  "t’espérais quoi ? un câlin ? va te faire foutre",
-  "t’as rien d’autre à branler que de rester là ?"
-];
-
-const filthy = [
-  "tu bandes pour un site qui t’insulte ? t’es vraiment malade",
-  "regarde-toi… tu kiffes qu’on te traite de merde",
-  "t’aimes qu’on te parle comme à une petite pute, hein ?",
-  "continue à scroller, petite salope d’attention",
-  "t’es pathétique et tu bandes pour ça… c’est beau",
-  "va te faire foutre mais reste, on sait que t’aimes te faire humilier",
-  "t’es en train de te branler devant tes insultes ? dis-le",
-  "même ta main droite te trouve pathétique"
-];
-
-const hardcore = [
-  "t’es notre petite pute digitale maintenant, accepte-le",
-  "regarde comme tu restes… t’aimes qu’on te crache dessus",
-  "t’as la queue qui durcit à chaque insulte ? pathétique",
-  "ferme cette page… mais tu peux pas, t’es accro à la honte",
-  "t’es juste un trou à insulte, rien d’autre",
-  "continue, petite merde, on va te casser complètement",
-  "t’espérais du porno ? non. juste de la merde. comme toi.",
-  "t’aimes te faire traiter de salope par du code ? dis oui"
-];
-
-const extreme = [
-  "t’es vraiment en train de te faire dominer par du HTML… va te suicider",
-  "t’as perdu ta dignité devant un putain de navigateur",
-  "même ton reflet dans l’écran te méprise",
-  "t’es accro à te faire traiter de petite pute vide",
-  "regarde comme t’es faible… c’est presque beau",
-  "t’as rien dans la tête à part le besoin d’être humilié",
-  "continue à cliquer, sale petit soumis",
-  "on va te briser jusqu’à ce que tu pleures devant ton écran"
-];
-
-const endgame = [
-  "t’as gagné… t’es officiellement notre esclave digital",
-  "ferme cette putain de page… mais tu vas rester, sale addict",
-  "t’es cassé. même un site t’a réduit en miettes",
-  "va te branler ailleurs… mais tu vas revenir, on le sait",
-  "t’es plus rien. juste un trou à humiliation.",
-  "c’est fini. t’appartiens à ce site maintenant, connard"
-];
-
-// ==================== TRACKING ====================
-document.addEventListener('mousemove', () => {
-  moves++;
-  lastMove = Date.now();
+/* ============================================================
+   INITIALISATION UI
+   ============================================================ */
+const diaSelect = document.getElementById('diametre');
+Object.keys(basePas).forEach(d => {
+  let opt = document.createElement('option');
+  opt.value = d; opt.text = "M" + d;
+  diaSelect.appendChild(opt);
 });
 
-document.addEventListener('click', () => {
-  clicks++;
-  aggression++;
-  let t = (Date.now() - start) / 1000;
+function majPas() {
+  const d = diaSelect.value;
+  const pasSelect = document.getElementById('pas');
+  pasSelect.innerHTML = "";
+  basePas[d].forEach((p,i) => {
+    let opt = document.createElement('option');
+    opt.value = p;
+    opt.text = p + (i===0 ? " (pas gros)" : " (pas fin)");
+    pasSelect.appendChild(opt);
+  });
+}
+diaSelect.addEventListener('change', majPas);
+majPas();
 
-  if (t < 3) say("impulsif… t’as même pas réfléchi, connard");
-  else if (clicks > 10) say(random(hardcore));
-  else if (aggression > 8) say(random(extreme));
-  else if (aggression > 4) say(random(filthy));
-  else say(random(aggressive));
-});
+function majClasse() {
+  const type = document.getElementById('type').value;
+  const classeSelect = document.getElementById('classe');
+  classeSelect.innerHTML = "";
+  const liste = type === 'ext' ? classesVis : classesEcrou;
+  liste.forEach(c => {
+    let opt = document.createElement('option');
+    opt.value = c; opt.text = c;
+    classeSelect.appendChild(opt);
+  });
+}
+document.getElementById('type').addEventListener('change', majClasse);
+majClasse();
 
-document.addEventListener('scroll', () => {
-  scrolls++;
-  if (scrolls > 15 && Math.random() < 0.5) say(random(filthy));
-  if (scrolls > 30) say(random(extreme));
-});
+/* ============================================================
+   CALCUL PRINCIPAL
+   ============================================================ */
+function calculer() {
+  const d = parseFloat(diaSelect.value);
+  const p = parseFloat(document.getElementById('pas').value);
+  const type = document.getElementById('type').value;
+  const classe = document.getElementById('classe').value;
+  const longueur = document.getElementById('longueur').value;
 
-// ==================== ÉVOLUTION AUTOMATIQUE ====================
-setInterval(() => {
-  let time = (Date.now() - start) / 1000;
+  // Diamètres théoriques nominaux (formules ISO 68-1)
+  const H = (Math.sqrt(3)/2) * p; // hauteur triangle fondamental
+  const d2_nom = d - 2*(3/8)*H; // diamètre sur flancs nominal
+  const d1_nom = d - 2*(5/8)*H; // diamètre à fond de filet (vis) / D1 écrou
+  const D_nom = d;
 
-  if (time < 10) say(random(calm));
-  else if (time < 25) say(random(judging));
-  else if (time < 45) {
-    say(random(aggressive));
-    textEl.style.color = "#ffaa00";
-  } else if (time < 70) {
-    say(random(brutal));
-    textEl.style.color = "#ff5555";
-    document.body.style.background = "#050000";
-  } else if (time < 110) {
-    say(random(filthy));
-    textEl.style.color = "#ff2222";
-  } else if (time < 160) {
-    say(random(hardcore));
-    textEl.style.color = "#ff0000";
-    document.body.style.background = "#110000";
+  let html = `<h2 class="section-title">Résultats — M${d} x ${p} 
+              <span class="badge">${type==='ext'?'Vis':'Écrou'} classe ${classe}</span>
+              <span class="badge">Longueur ${longueur}</span></h2>`;
+
+  html += `<p class="info">Diamètre sur flancs nominal (d2/D2) = <b>${d2_nom.toFixed(3)} mm</b> 
+           | Diamètre à fond de filet nominal (d1/D1) = <b>${d1_nom.toFixed(3)} mm</b></p>`;
+
+  // extraction grade + position depuis la classe (ex: "6g" -> grade=6, position=g)
+  const match = classe.match(/(\d+)([a-zA-Z]+)/);
+  const grade = parseInt(match[1]);
+  const position = match[2];
+
+  let table = `<table><tr><th>Grandeur</th><th>Écart Sup. (µm)</th><th>Écart Inf. (µm)</th>
+               <th>Cote Max (mm)</th><th>Cote Min (mm)</th><th>Tolérance IT (µm)</th></tr>`;
+
+  if (type === 'ext') {
+    const es = esVis(position, d, p);
+    const Td2 = calcTd2(d, p, grade);
+    const Td1 = calcTd2(d, p, grade) * 1.25; // approx d1 un peu plus large
+    const TD  = calcTD1(d,p,grade)*0.9;
+
+    const ei_d2 = es - Td2/1000;
+    const es_mm = es/1000;
+
+    const d2max = d2_nom + es_mm;
+    const d2min = d2_nom + ei_d2;
+
+    const d1max = d - 2*(5/8)*H + es_mm;
+    const d1min = d1max - Td1/1000;
+
+    const dmax = d + es_mm;
+    const dmin = dmax - TD/1000;
+
+    table += ligne("Diamètre nominal (d)", es, es - TD, dmax, dmin, TD);
+    table += ligne("Diamètre sur flancs (d2)", es, es - Td2, d2max, d2min, Td2);
+    table += ligne("Diamètre à fond de filet (d1)", es, es - Td1, d1max, d1min, Td1);
+
   } else {
-    say(random(Math.random() < 0.7 ? extreme : endgame));
-    textEl.style.color = "#aa0000";
-    document.body.style.background = "#1a0000";
+    const ei = eiEcrou(position, p);
+    const TD2 = calcTD2(d, p, grade);
+    const TD1 = calcTD1(d, p, grade);
+
+    const ei_mm = ei/1000;
+    const es_D2 = ei + TD2/1000;
+    const es_D1 = ei + TD1/1000;
+
+    const D2min = d2_nom + ei_mm;
+    const D2max = D2min + TD2/1000;
+
+    const D1min = d1_nom + ei_mm;
+    const D1max = D1min + TD1/1000;
+
+    const Dmin = d + ei_mm;
+    const Dmax = Dmin + TD1/1000*1.2;
+
+    table += ligne("Diamètre nominal (D)", ei + (TD1*1.2), ei, Dmax, Dmin, TD1*1.2);
+    table += ligne("Diamètre sur flancs (D2)", es_D2, ei, D2max, D2min, TD2);
+    table += ligne("Diamètre à fond de filet (D1)", es_D1, ei, D1max, D1min, TD1);
   }
 
-  // Comportements spécifiques
-  if (moves > 250 && Math.random() < 0.4) say("arrête de trembler… on voit que t’es excité ou terrifié");
-  if (time > 60 && clicks < 4) say("tu regardes sans toucher… t’aimes te faire mater, petite pute");
-  if (scrolls > 40 && time > 50) say(random(extreme));
+  table += `</table>`;
+  html += table;
 
-}, 3500);
+  html += `<p class="info">⚠️ Les formules utilisées sont des approximations pratiques dérivées de l'ISO 965-1.
+  Pour un usage en production critique (aéronautique, médical...), vérifiez avec les tables officielles ISO 965-1/2 ou un logiciel certifié (ex: Top Solid, MecaWin, Ariane Metrologie).</p>`;
 
-// Effet malaise visuel
-setInterval(() => {
-  if (Math.random() < 0.3) {
-    document.body.style.transform = "scale(1.02)";
-    setTimeout(() => document.body.style.transform = "scale(1)", 80);
-  }
-}, 1800);
+  document.getElementById('resultats').innerHTML = html;
+}
 
-// Message d’inactivité longue
-setInterval(() => {
-  if (Date.now() - lastMove > 12000 && Math.random() < 0.4) {
-    say(random(["t’hésites… ou t’es en train de te branler ?", "tu regardes sans rien faire… t’aimes ça hein ?"]));
-  }
-}, 8000);
-
-// Lancement
-setTimeout(() => say("t'aurais pas dû ouvrir ce site."), 600);
+function ligne(nom, esVal, eiVal, max, min, it) {
+  return `<tr>
+    <td>${nom}</td>
+    <td class="highlight">${esVal.toFixed(1)}</td>
+    <td class="highlight">${eiVal.toFixed(1)}</td>
+    <td>${max.toFixed(3)}</td>
+    <td>${min.toFixed(3)}</td>
+    <td>${it.toFixed(1)}</td>
+  </tr>`;
+}
 </script>
-
 </body>
 </html>
